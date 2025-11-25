@@ -208,11 +208,11 @@ export function ProjectsList() {
                           {project.project_name}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {project.assigned_manager.name}
+                          {project.assigned_manager?.name || 'Unassigned'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {project.customer.customer_name}
+                        {project.customer?.customer_name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

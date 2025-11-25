@@ -12,11 +12,13 @@ import {
   Menu,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCog
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context';
 import { ThemeToggle } from '../ThemeToggle';
+import { Logo, LogoIcon } from '../Logo';
 
 interface MenuItem {
   name: string;
@@ -60,6 +62,12 @@ const menuItems: MenuItem[] = [
     name: 'Trends',
     path: '/trends',
     icon: <TrendingUp className="w-5 h-5" />,
+  },
+  {
+    name: 'Manage Users',
+    path: '/manage-users',
+    icon: <UserCog className="w-5 h-5" />,
+    roles: ['Admin'],
   },
   {
     name: 'Profile',
@@ -135,15 +143,17 @@ export function Sidebar() {
           {/* Logo/Header with Collapse Toggle */}
           <div className="flex items-center h-16 border-b border-gray-200 dark:border-gray-700 px-4">
             <div className={`flex items-center justify-between w-full ${isCollapsed ? 'justify-center' : ''}`}>
-              {!isCollapsed && (
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white flex-1">
-                  PM Dashboard
-                </h1>
+              {isCollapsed ? (
+                <LogoIcon size={32} className="flex-shrink-0" />
+              ) : (
+                <div className="flex-1">
+                  <Logo size="sm" showText={true} />
+                </div>
               )}
               {/* Desktop Collapse Toggle Button */}
               <button
                 onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex-shrink-0 ml-2"
                 aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               >

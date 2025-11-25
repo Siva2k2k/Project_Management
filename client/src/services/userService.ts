@@ -40,6 +40,13 @@ export interface BulkImportResult {
   errors: string[];
 }
 
+export interface CreateUserData {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
 export const userService = {
   async getProfile(): Promise<User> {
     const response = await api.get<{ success: boolean; data: User }>('/users/profile');
@@ -97,6 +104,20 @@ export const userService = {
       '/users/bulk-import',
       { users }
     );
+    return response.data.data;
+  },
+
+  async createUser(data: CreateUserData): Promise<User> {
+    const response = await api.post<{ success: boolean; data: User }>('/users/create', data);
+    return response.data.data;
+  },
+
+  async resetUserPassword(id: string): Promise<void> {
+    await api.post(`/users/${id}/reset-password`);
+  },
+
+  async updateUser(id: string, data: UpdateProfileData): Promise<User> {
+    const response = await api.put<{ success: boolean; data: User }>(`/users/${id}`, data);
     return response.data.data;
   },
 };

@@ -40,7 +40,25 @@ export const bulkImportSchema = z.object({
   ).min(1, 'At least one user is required'),
 });
 
+export const createUserSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name cannot exceed 100 characters')
+    .trim(),
+  email: z
+    .string()
+    .email('Invalid email format')
+    .toLowerCase()
+    .trim(),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters'),
+  role: z.enum(['Manager', 'Admin', 'CEO']),
+});
+
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
 export type UserQueryInput = z.infer<typeof userQuerySchema>;
 export type BulkImportInput = z.infer<typeof bulkImportSchema>;
+export type CreateUserInput = z.infer<typeof createUserSchema>;

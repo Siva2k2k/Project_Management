@@ -328,6 +328,195 @@ class EmailService {
     });
   }
 
+  async sendNewUserEmail(
+    email: string,
+    name: string,
+    password: string
+  ): Promise<boolean> {
+    const loginUrl = `${config.clientUrl}/login`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .header h1 {
+              color: white;
+              margin: 0;
+            }
+            .content {
+              background: #f9fafb;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .credentials {
+              background: white;
+              padding: 20px;
+              border-radius: 5px;
+              margin: 20px 0;
+              border-left: 4px solid #667eea;
+            }
+            .credentials p {
+              margin: 8px 0;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 30px;
+              background: #667eea;
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .warning {
+              background: #fef3c7;
+              border-left: 4px solid #f59e0b;
+              padding: 12px;
+              margin: 20px 0;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 20px;
+              color: #666;
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Welcome to PM Dashboard!</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${name},</p>
+            <p>An account has been created for you on PM Dashboard. Below are your login credentials:</p>
+            <div class="credentials">
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Password:</strong> ${password}</p>
+            </div>
+            <div class="warning">
+              <strong>Security Notice:</strong> Please change your password after your first login for security purposes.
+            </div>
+            <div style="text-align: center;">
+              <a href="${loginUrl}" class="button">Login to PM Dashboard</a>
+            </div>
+            <p>If you have any questions or need assistance, please don't hesitate to contact the administrator.</p>
+            <p>Best regards,<br>The PM Dashboard Team</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} PM Dashboard. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Your PM Dashboard Account Has Been Created',
+      html,
+      text: `Hi ${name}, Your PM Dashboard account has been created. Email: ${email}, Password: ${password}. Login at ${loginUrl}`,
+    });
+  }
+
+  async sendAdminPasswordResetEmail(email: string, name: string, resetToken: string): Promise<boolean> {
+    const resetUrl = `${config.clientUrl}/reset-password?token=${resetToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .header h1 {
+              color: white;
+              margin: 0;
+            }
+            .content {
+              background: #f9fafb;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 30px;
+              background: #f5576c;
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .warning {
+              background: #fef3c7;
+              border-left: 4px solid #f59e0b;
+              padding: 12px;
+              margin: 20px 0;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 20px;
+              color: #666;
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Password Reset Request</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${name},</p>
+            <p>An administrator has initiated a password reset for your PM Dashboard account. You can now set a new password using the button below.</p>
+            <div style="text-align: center;">
+              <a href="${resetUrl}" class="button">Reset Your Password</a>
+            </div>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #f5576c;">${resetUrl}</p>
+            <div class="warning">
+              <strong>Security Notice:</strong> This link will expire in 1 hour. If you did not request this password reset, please contact your administrator immediately.
+            </div>
+            <p>Best regards,<br>The PM Dashboard Team</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} PM Dashboard. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: 'Password Reset Request - PM Dashboard',
+      html,
+      text: `Hi ${name}, An administrator has initiated a password reset for your account. Reset your password by visiting: ${resetUrl}. This link will expire in 1 hour.`,
+    });
+  }
+
   async sendProjectStatusNotification(
     email: string,
     projectName: string,

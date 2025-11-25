@@ -153,46 +153,67 @@ class MicrosoftAuthService {
   }
 
   private async findOrCreateUser(userInfo: MicrosoftUserInfo): Promise<IUser> {
-    try {
-      const email = userInfo.mail || userInfo.userPrincipalName;
+    const email = userInfo.mail || userInfo.userPrincipalName;
 
-      if (!email) {
-        throw new AuthError('No email address found in Microsoft account');
-      }
+    if (!email) {
+      throw new AuthError('No email address found in Microsoft account');
+    }
 
-      // Try to find existing user
-      let user = await userRepository.findByEmailWithoutPassword(email.toLowerCase());
+    const normalizedEmail = email.toLowerCase();
 
-      if (user) {
-        // Update user info if needed
-        if (user.name !== userInfo.displayName) {
-          user = await userRepository.updateById(user._id, {
+    // Try to find existing user (first attempt)
+    let user = await userRepository.findByEmailWithoutPassword(normalizedEmail);
+
+    if (user) {
+      // Update user info if needed
+      if (user.name !== userInfo.displayName) {
+        try {
+          user = await userRepository.updateById(user._id.toString(), {
             name: userInfo.displayName,
             last_modified_date: new Date(),
           });
+        } catch (updateError) {
+          logger.warn('Failed to update user name, continuing with existing data:', updateError);
         }
-        return user!;
       }
+      return user!;
+    }
 
-      // Create new user
+    // User doesn't exist, try to create
+    try {
       const newUser = await userRepository.create({
         name: userInfo.displayName,
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password: `ms_sso_${Date.now()}_${Math.random().toString(36)}`, // Random password for SSO users
         role: UserRole.MANAGER,
         is_active: true,
+        email_verified: true,
         refresh_tokens: [],
       } as Partial<IUser>);
 
-      logger.info(`New user created via Microsoft SSO: ${email}`);
-
+      logger.info(`New user created via Microsoft SSO: ${normalizedEmail}`);
       return newUser;
-    } catch (error) {
-      if (error instanceof AuthError) {
-        throw error;
+    } catch (createError: any) {
+      // Handle duplicate key error - user might have been created between our check and creation attempt
+      if (createError.code === 11000 || createError.message?.includes('E11000')) {
+        logger.warn(`Duplicate key error for ${normalizedEmail}, fetching existing user`);
+
+        // Try to fetch the user again
+        const existingUser = await userRepository.findByEmailWithoutPassword(normalizedEmail);
+
+        if (existingUser) {
+          logger.info(`Successfully retrieved existing user: ${normalizedEmail}`);
+          return existingUser;
+        }
+
+        // If we still can't find the user, something is very wrong
+        logger.error(`User exists (duplicate key) but cannot be found: ${normalizedEmail}`);
+        throw new InternalError('Database inconsistency detected. Please contact support.');
       }
-      logger.error('Failed to find or create user:', error);
-      throw new InternalError('Failed to process user account');
+
+      // For other errors, log and re-throw
+      logger.error('Failed to create user:', createError);
+      throw new InternalError('Failed to create user account');
     }
   }
 

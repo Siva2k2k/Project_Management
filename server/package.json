@@ -10,8 +10,7 @@
     "start:prod": "cross-env NODE_ENV=production node dist/index.js",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-	"heroku-postbuild": "cd ../client && npm install --include=dev && npm run build && cd ../server && npm install && npm run build"
-
+    "heroku-postbuild": "cd ../client && npm install && npm run build && cd ../server && npm run build"
   },
   "keywords": [],
   "author": "",
@@ -31,18 +30,7 @@
     "mongoose": "^8.20.1",
     "nodemailer": "^7.0.10",
     "winston": "^3.18.3",
-    "zod": "^4.1.13",
-	"@types/bcryptjs": "^2.4.6",
-    "@types/cookie-parser": "^1.4.10",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.5",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.10.1",
-    "cross-env": "^10.1.0",
-    "nodemon": "^3.1.11",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

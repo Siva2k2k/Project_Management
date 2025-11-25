@@ -14,6 +14,7 @@ import {
   updateUserRoleSchema,
   userQuerySchema,
   bulkImportSchema,
+  createUserSchema,
 } from '../validators/user';
 
 const router = Router();
@@ -219,6 +220,60 @@ router.post(
         req.user!._id.toString()
       );
       sendSuccess(res, result, 'Bulk import completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/v1/users/create - Create new user (Admin only)
+router.post(
+  '/create',
+  authorize(UserRole.ADMIN),
+  validate(createUserSchema),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const user = await userService.createUser(
+        req.body,
+        req.user!._id.toString()
+      );
+      sendSuccess(res, user, 'User created successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/v1/users/:id/reset-password - Reset user password (Admin only)
+router.post(
+  '/:id/reset-password',
+  authorize(UserRole.ADMIN),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      await userService.resetUserPassword(
+        req.params.id,
+        req.user!._id.toString()
+      );
+      sendSuccess(res, null, 'Password reset email sent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// PUT /api/v1/users/:id - Update user (Admin only)
+router.put(
+  '/:id',
+  authorize(UserRole.ADMIN),
+  validate(updateProfileSchema),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const user = await userService.updateProfile(
+        req.params.id,
+        req.body,
+        req.user!._id.toString()
+      );
+      sendSuccess(res, user, 'User updated successfully');
     } catch (error) {
       next(error);
     }

@@ -2,12 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, ThemeProvider, useAuth } from './context';
 import { ProtectedRoute } from './components';
 import { DashboardLayout } from './components/layout';
-import { Login, Register, AuthCallback, Profile } from './pages';
+import { Login, Register, AuthCallback, ForgotPassword, ResetPassword, Profile } from './pages';
 import { ManagerDashboard, CEODashboard, KPIDashboard, TrendsDashboard } from './pages/dashboard';
 import { CustomersList } from './pages/customers/CustomersList';
 import { ResourcesList } from './pages/resources/ResourcesList';
 import { ProjectsList, ProjectDetails } from './pages/projects';
 import { WeeklyEffortsList } from './pages/weeklyEfforts';
+import { ManageUsers } from './pages/users/ManageUsers';
 import './index.css';
 
 // Wrapper component to handle role-based dashboard
@@ -30,6 +31,8 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Protected routes with layout */}
@@ -119,6 +122,16 @@ function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <Profile />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-users"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <ManageUsers />
                 </DashboardLayout>
               </ProtectedRoute>
             }

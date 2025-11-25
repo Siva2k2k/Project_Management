@@ -112,7 +112,7 @@ export function ProjectDetails() {
               {project.project_name}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {project.customer.customer_name} • Managed by {project.assigned_manager.name}
+              {project.customer?.customer_name || 'N/A'} • Managed by {project.assigned_manager?.name || 'Unassigned'}
             </p>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Types } from 'mongoose';
 import { userRepository, PaginatedResult } from '../dbrepo';
 import {
@@ -9,7 +10,8 @@ import {
 } from '../utils/errors';
 import { logger } from '../utils';
 import { IUser, UserRole, PaginationQuery } from '../types';
-import { UpdateProfileInput, BulkImportInput } from '../validators/user';
+import { UpdateProfileInput, BulkImportInput, CreateUserInput } from '../validators/user';
+import { emailService } from './emailService';
 
 interface UserFilter {
   search?: string;
@@ -328,6 +330,79 @@ class UserService {
       }
       logger.error('Delete user failed:', error);
       throw new InternalError('Failed to delete user');
+    }
+  }
+
+  async createUser(
+    data: CreateUserInput,
+    adminId: string
+  ): Promise<Partial<IUser>> {
+    try {
+      // Check if user already exists
+      const existingUser = await userRepository.findByEmailWithoutPassword(data.email);
+
+      if (existingUser) {
+        throw new ConflictError('Email already registered');
+      }
+
+      // Create new user
+      const user = await userRepository.create({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role as UserRole,
+        is_active: true,
+        email_verified: true,
+        refresh_tokens: [],
+        last_modified_by: new Types.ObjectId(adminId),
+      } as Partial<IUser>);
+
+      // Send email with credentials (async, don't wait)
+      emailService.sendNewUserEmail(user.email, user.name, data.password).catch((error) => {
+        logger.error('Failed to send new user email:', error);
+      });
+
+      logger.info(`User created by admin: ${user.email} by ${adminId}`);
+
+      return this.sanitizeUser(user);
+    } catch (error) {
+      if (error instanceof ConflictError || error instanceof ValidationError) {
+        throw error;
+      }
+      logger.error('Create user failed:', error);
+      throw new InternalError('Failed to create user');
+    }
+  }
+
+  async resetUserPassword(userId: string, adminId: string): Promise<void> {
+    try {
+      const user = await userRepository.findById(userId);
+
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Generate password reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Update user with reset token
+      await userRepository.updateById(userId, {
+        password_reset_token: resetToken,
+        password_reset_expires: resetExpires,
+        last_modified_by: new Types.ObjectId(adminId),
+      });
+
+      // Send password reset email with direct link
+      await emailService.sendAdminPasswordResetEmail(user.email, user.name, resetToken);
+
+      logger.info(`Password reset initiated for user: ${userId} by admin ${adminId}`);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      logger.error('Reset user password failed:', error);
+      throw new InternalError('Failed to reset user password');
     }
   }
 
