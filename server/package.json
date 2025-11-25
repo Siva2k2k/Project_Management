@@ -10,7 +10,8 @@
     "start:prod": "cross-env NODE_ENV=production node dist/index.js",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "heroku-postbuild": "cd ../client && npm install && npm run build && cd ../server && npm run build"
+	"heroku-postbuild": "cd ../client && npm install --include=dev && npm run build && cd ../server && npm install && npm run build"
+
   },
   "keywords": [],
   "author": "",
