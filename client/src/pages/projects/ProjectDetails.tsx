@@ -101,7 +101,7 @@ export function ProjectDetails() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pl-12 lg:pl-0">
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={() => navigate('/projects')}>
             <ArrowLeft className="w-4 h-4 mr-2" />

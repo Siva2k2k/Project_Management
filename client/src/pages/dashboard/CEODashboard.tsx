@@ -69,7 +69,7 @@ export function CEODashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="pl-12 lg:pl-0">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">CEO Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
           Organization-wide project overview and metrics

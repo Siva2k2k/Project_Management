@@ -101,10 +101,12 @@ export function ResourcesList() {
     fetchResources();
   };
 
+  // className="p-4 sm:p-6"
+
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Resources</h1>
+    <div>
+      <div className="mb-6 pl-12 lg:pl-0">
+        <h1 className="text-3xl sm:text-3xl font-bold text-gray-900">Resources</h1>
         <p className="text-sm sm:text-base text-gray-500 mt-1">Manage your resource information</p>
       </div>
 

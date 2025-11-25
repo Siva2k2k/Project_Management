@@ -34,11 +34,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const profile = await authService.getProfile();
           setUser(profile);
         } else {
-          // No access token - not authenticated
-          // Don't try to refresh as it will fail if there's no refresh token cookie
-          setUser(null);
-          setAccessToken(null);
-          setIsLoading(false);
+          // No access token in memory - try to refresh from httpOnly cookie
+          // This handles the case when the app hot reloads and loses in-memory token
+          try {
+            await authService.refreshToken();
+            const profile = await authService.getProfile();
+            setUser(profile);
+          } catch (refreshError) {
+            // No valid refresh token - user is not authenticated
+            setUser(null);
+            setAccessToken(null);
+          }
         }
       } catch (error) {
         // Authentication failed

@@ -110,7 +110,7 @@ export function ProjectsList() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pl-12 lg:pl-0">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Projects</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
