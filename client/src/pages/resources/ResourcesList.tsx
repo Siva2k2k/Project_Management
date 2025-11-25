@@ -106,8 +106,8 @@ export function ResourcesList() {
   return (
     <div>
       <div className="mb-6 pl-12 lg:pl-0">
-        <h1 className="text-3xl sm:text-3xl font-bold text-gray-900">Resources</h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1">Manage your resource information</p>
+        <h1 className="text-3xl sm:text-3xl font-bold text-gray-900 dark:text-white">Resources</h1>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Manage your resource information</p>
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -131,16 +131,16 @@ export function ResourcesList() {
 
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       ) : resources.length === 0 ? (
-        <div className="text-center py-12 border border-gray-200 rounded-lg">
-          <p className="text-gray-500">No resources found</p>
+        <div className="text-center py-12 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+          <p className="text-gray-500 dark:text-gray-400">No resources found</p>
         </div>
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
+          <div className="hidden md:block border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -155,9 +155,9 @@ export function ResourcesList() {
               <TableBody>
                 {resources.map((resource) => (
                   <TableRow key={resource._id}>
-                    <TableCell className="font-medium">{resource.resource_name}</TableCell>
-                    <TableCell>{resource.email}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-gray-900 dark:text-white">{resource.resource_name}</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">{resource.email}</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">
                       {resource.currency} {resource.per_hour_rate}/hr
                     </TableCell>
                     <TableCell>
@@ -166,18 +166,19 @@ export function ResourcesList() {
                           checked={resource.status === ResourceStatus.ACTIVE}
                           onCheckedChange={() => handleStatusToggle(resource)}
                         />
-                        <span className={resource.status === ResourceStatus.ACTIVE ? 'text-green-600' : 'text-gray-500'}>
+                        <span className={resource.status === ResourceStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
                           {resource.status}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{new Date(resource.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">{new Date(resource.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(resource)}
+                          className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -185,8 +186,9 @@ export function ResourcesList() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteDialog({ open: true, resource })}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -199,16 +201,16 @@ export function ResourcesList() {
           {/* Mobile Card View */}
           <div className="md:hidden space-y-4">
             {resources.map((resource) => (
-              <div key={resource._id} className="border border-gray-200 rounded-lg p-4 bg-white">
+              <div key={resource._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{resource.resource_name}</h3>
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{resource.resource_name}</h3>
                     <div className="flex items-center gap-2 mt-2">
                       <Switch
                         checked={resource.status === ResourceStatus.ACTIVE}
                         onCheckedChange={() => handleStatusToggle(resource)}
                       />
-                      <span className={`text-sm ${resource.status === ResourceStatus.ACTIVE ? 'text-green-600' : 'text-gray-500'}`}>
+                      <span className={`text-sm ${resource.status === ResourceStatus.ACTIVE ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
                         {resource.status}
                       </span>
                     </div>
@@ -218,6 +220,7 @@ export function ResourcesList() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(resource)}
+                      className="text-green-600 dark:text-green-400"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -225,23 +228,24 @@ export function ResourcesList() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteDialog({ open: true, resource })}
+                      className="text-red-600 dark:text-red-400"
                     >
-                      <Trash2 className="h-4 w-4 text-red-600" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-gray-500">Email:</span>
-                    <p className="text-gray-900">{resource.email}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                    <p className="text-gray-900 dark:text-white">{resource.email}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Rate:</span>
-                    <p className="text-gray-900">{resource.currency} {resource.per_hour_rate}/hr</p>
+                    <span className="text-gray-500 dark:text-gray-400">Rate:</span>
+                    <p className="text-gray-900 dark:text-white">{resource.currency} {resource.per_hour_rate}/hr</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Created:</span>
-                    <p className="text-gray-900">{new Date(resource.createdAt).toLocaleDateString()}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Created:</span>
+                    <p className="text-gray-900 dark:text-white">{new Date(resource.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
               </div>
@@ -250,7 +254,7 @@ export function ResourcesList() {
 
           {/* Pagination */}
           <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} resources
             </p>
             <div className="flex gap-2">
