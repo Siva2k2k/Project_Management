@@ -5,6 +5,8 @@ import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
 import { Button } from '../../components/ui/Button';
 import { WeeklyEffortDialog } from './WeeklyEffortDialog';
+import { useAuth } from '../../context/AuthContext';
+import { UserRole } from '../../types';
 
 interface ProjectWeekData {
   project: Project;
@@ -15,6 +17,7 @@ interface ProjectWeekData {
 }
 
 export function WeeklyEffortsList() {
+  const { user } = useAuth();
   const [projectsData, setProjectsData] = useState<ProjectWeekData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
@@ -68,8 +71,15 @@ export function WeeklyEffortsList() {
     try {
       setLoading(true);
 
-      // Fetch all active projects
-      const projectsResponse = await projectService.getAll({ limit: 100 });
+      // Fetch projects - filter by manager if user is a Manager
+      const params: any = { limit: 100 };
+      
+      // Managers can only see their own projects
+      if (user?.role === UserRole.MANAGER) {
+        params.assigned_manager = user._id;
+      }
+
+      const projectsResponse = await projectService.getAll(params);
       const projects = projectsResponse.data;
       console.log('Fetched projects:', projects.length);
 
