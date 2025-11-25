@@ -12,6 +12,8 @@ import projectService, {
 import type { Project, CreateProjectInput } from '../../services/projectService';
 import customerService from '../../services/customerService';
 import userService from '../../services/userService';
+import { useAuth } from '../../context/AuthContext';
+import { UserRole } from '../../types';
 
 interface ProjectDialogProps {
   open: boolean;
@@ -21,6 +23,7 @@ interface ProjectDialogProps {
 }
 
 export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDialogProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
@@ -62,6 +65,8 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
           scope_status: RAGStatus.GREEN,
           quality_status: RAGStatus.GREEN,
           budget_status: RAGStatus.GREEN,
+          // Auto-select manager if the logged-in user is a Manager
+          assigned_manager: user?.role === UserRole.MANAGER ? user._id : '',
         });
       }
     }
@@ -78,8 +83,14 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
 
   const fetchManagers = async () => {
     try {
-      const response = await userService.listUsers({ limit: 100 });
-      setManagers(response.data.filter((u: any) => ['Manager', 'Admin', 'CEO'].includes(u.role)));
+      // If user is a Manager, they can only assign projects to themselves
+      if (user?.role === UserRole.MANAGER) {
+        setManagers([user]);
+      } else {
+        // Admin and CEO can see all managers
+        const response = await userService.listUsers({ limit: 100 });
+        setManagers(response.data.filter((u: any) => ['Manager', 'Admin', 'CEO'].includes(u.role)));
+      }
     } catch (error) {
       console.error('Failed to fetch managers:', error);
     }

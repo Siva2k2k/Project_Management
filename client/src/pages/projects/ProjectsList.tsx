@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ProjectDialog } from './ProjectDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { useAuth } from '../../context/AuthContext';
+import { UserRole } from '../../types';
 
 const STATUS_COLORS: Record<string, string> = {
   Red: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
@@ -16,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function ProjectsList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,7 +37,18 @@ export function ProjectsList() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await projectService.getAll({
+      
+      // If user is a Manager, filter by their ID
+      const params: {
+        page: number;
+        limit: number;
+        search?: string;
+        overall_status?: RAGStatus;
+        project_type?: ProjectType;
+        assigned_manager?: string;
+        sort: string;
+        order: 'asc' | 'desc';
+      } = {
         page,
         limit: 10,
         search: searchTerm || undefined,
@@ -42,7 +56,14 @@ export function ProjectsList() {
         project_type: typeFilter || undefined,
         sort: 'start_date',
         order: 'desc',
-      });
+      };
+
+      // Managers can only see their own projects
+      if (user?.role === UserRole.MANAGER) {
+        params.assigned_manager = user._id;
+      }
+
+      const response = await projectService.getAll(params);
       setProjects(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
