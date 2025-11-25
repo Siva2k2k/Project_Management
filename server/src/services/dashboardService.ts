@@ -1,0 +1,430 @@
+import { Types } from 'mongoose';
+import { projectRepository } from '../dbrepo/ProjectRepository';
+import { projectWeeklyEffortRepository } from '../dbrepo/ProjectWeeklyEffortRepository';
+import { projectWeeklyMetricsRepository } from '../dbrepo/ProjectWeeklyMetricsRepository';
+import { NotFoundError } from '../utils/errors';
+import { ICustomer, IResource, IProject as IProjectDoc } from '../types';
+
+// Helper type guards
+function isPopulatedCustomer(customer: Types.ObjectId | ICustomer): customer is ICustomer {
+  return typeof customer === 'object' && 'customer_name' in customer;
+}
+
+function isPopulatedResource(resource: Types.ObjectId | IResource): resource is IResource {
+  return typeof resource === 'object' && 'resource_name' in resource;
+}
+
+function isPopulatedProject(project: Types.ObjectId | IProjectDoc): project is IProjectDoc {
+  return typeof project === 'object' && 'project_name' in project;
+}
+
+interface ProjectSummary {
+  _id: string;
+  project_name: string;
+  customer: string;
+  overall_status: string;
+  scope_status: string;
+  quality_status: string;
+  budget_status: string;
+  scope_completed: number;
+  estimated_budget: number;
+  start_date: Date;
+  end_date: Date;
+  project_type: string;
+}
+
+interface DashboardData {
+  projectsSummary: ProjectSummary[];
+  projectsByCustomer: Array<{ customer: string; count: number }>;
+  projectsByStatus: Array<{ status: string; count: number }>;
+  effortByWeek: Array<{ week: string; hours: number }>;
+  budgetUtilization: Array<{ project: string; estimated: number; actual: number }>;
+  resourceAllocation: Array<{ resource: string; hours: number; projects: number }>;
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  atRiskProjects: number;
+}
+
+export async function getManagerDashboard(userId: string): Promise<DashboardData> {
+  const projects = await projectRepository.findByManager(userId);
+
+  // Calculate project summaries
+  const projectsSummary = projects.map((p) => ({
+    _id: p._id.toString(),
+    project_name: p.project_name,
+    customer: isPopulatedCustomer(p.customer) ? p.customer.customer_name : 'Unknown',
+    overall_status: p.overall_status,
+    scope_status: p.scope_status,
+    quality_status: p.quality_status,
+    budget_status: p.budget_status,
+    scope_completed: p.scope_completed,
+    estimated_budget: p.estimated_budget,
+    start_date: p.start_date,
+    end_date: p.end_date,
+    project_type: p.project_type,
+  }));
+
+  // Projects by customer
+  const customerMap = new Map<string, number>();
+  projects.forEach((p) => {
+    const customer = isPopulatedCustomer(p.customer) ? p.customer.customer_name : 'Unknown';
+    customerMap.set(customer, (customerMap.get(customer) || 0) + 1);
+  });
+  const projectsByCustomer = Array.from(customerMap.entries()).map(([customer, count]) => ({
+    customer,
+    count,
+  }));
+
+  // Projects by RAG status
+  const statusMap = new Map<string, number>();
+  projects.forEach((p) => {
+    statusMap.set(p.overall_status, (statusMap.get(p.overall_status) || 0) + 1);
+  });
+  const projectsByStatus = Array.from(statusMap.entries()).map(([status, count]) => ({
+    status,
+    count,
+  }));
+
+  // Effort by week - last 12 weeks
+  const projectIds = projects.map((p) => p._id.toString());
+  const twelveWeeksAgo = new Date();
+  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+
+  const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, twelveWeeksAgo);
+  const effortByWeek = effortData.map((e) => ({
+    week: e.week_start_date.toISOString().split('T')[0],
+    hours: e.total_hours,
+  }));
+
+  // Budget utilization
+  const budgetUtilization = await Promise.all(
+    projects.slice(0, 10).map(async (p) => {
+      const efforts = await projectWeeklyEffortRepository.findAllByProject(p._id.toString());
+      const actualHours = efforts.reduce((sum, e) => sum + e.hours, 0);
+      return {
+        project: p.project_name,
+        estimated: p.estimated_budget,
+        actual: actualHours * 50, // Assuming average rate of $50/hour
+      };
+    })
+  );
+
+  // Resource allocation
+  const resourceData = await projectWeeklyEffortRepository.getResourceAllocation(projectIds);
+  const resourceAllocation = resourceData.map((r) => ({
+    resource: r.resource_name,
+    hours: r.total_hours,
+    projects: r.project_count,
+  }));
+
+  // Statistics
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter((p) => {
+    const now = new Date();
+    return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
+  }).length;
+  const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
+  const atRiskProjects = projects.filter((p) => p.overall_status === 'Red').length;
+
+  return {
+    projectsSummary,
+    projectsByCustomer,
+    projectsByStatus,
+    effortByWeek,
+    budgetUtilization,
+    resourceAllocation,
+    totalProjects,
+    activeProjects,
+    completedProjects,
+    atRiskProjects,
+  };
+}
+
+export async function getCEODashboard(): Promise<DashboardData> {
+  const projects = await projectRepository.findAll();
+
+  // Reuse the same logic as manager dashboard but for all projects
+  const projectsSummary = projects.map((p) => ({
+    _id: p._id.toString(),
+    project_name: p.project_name,
+    customer: isPopulatedCustomer(p.customer) ? p.customer.customer_name : 'Unknown',
+    overall_status: p.overall_status,
+    scope_status: p.scope_status,
+    quality_status: p.quality_status,
+    budget_status: p.budget_status,
+    scope_completed: p.scope_completed,
+    estimated_budget: p.estimated_budget,
+    start_date: p.start_date,
+    end_date: p.end_date,
+    project_type: p.project_type,
+  }));
+
+  const customerMap = new Map<string, number>();
+  projects.forEach((p) => {
+    const customer = isPopulatedCustomer(p.customer) ? p.customer.customer_name : 'Unknown';
+    customerMap.set(customer, (customerMap.get(customer) || 0) + 1);
+  });
+  const projectsByCustomer = Array.from(customerMap.entries()).map(([customer, count]) => ({
+    customer,
+    count,
+  }));
+
+  const statusMap = new Map<string, number>();
+  projects.forEach((p) => {
+    statusMap.set(p.overall_status, (statusMap.get(p.overall_status) || 0) + 1);
+  });
+  const projectsByStatus = Array.from(statusMap.entries()).map(([status, count]) => ({
+    status,
+    count,
+  }));
+
+  const projectIds = projects.map((p) => p._id.toString());
+  const twelveWeeksAgo = new Date();
+  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+
+  const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, twelveWeeksAgo);
+  const effortByWeek = effortData.map((e) => ({
+    week: e.week_start_date.toISOString().split('T')[0],
+    hours: e.total_hours,
+  }));
+
+  const budgetUtilization = await Promise.all(
+    projects.slice(0, 10).map(async (p) => {
+      const efforts = await projectWeeklyEffortRepository.findAllByProject(p._id.toString());
+      const actualHours = efforts.reduce((sum, e) => sum + e.hours, 0);
+      return {
+        project: p.project_name,
+        estimated: p.estimated_budget,
+        actual: actualHours * 50,
+      };
+    })
+  );
+
+  const resourceData = await projectWeeklyEffortRepository.getResourceAllocation(projectIds);
+  const resourceAllocation = resourceData.map((r) => ({
+    resource: r.resource_name,
+    hours: r.total_hours,
+    projects: r.project_count,
+  }));
+
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter((p) => {
+    const now = new Date();
+    return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
+  }).length;
+  const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
+  const atRiskProjects = projects.filter((p) => p.overall_status === 'Red').length;
+
+  return {
+    projectsSummary,
+    projectsByCustomer,
+    projectsByStatus,
+    effortByWeek,
+    budgetUtilization,
+    resourceAllocation,
+    totalProjects,
+    activeProjects,
+    completedProjects,
+    atRiskProjects,
+  };
+}
+
+export async function getProjectDrillDown(projectId: string) {
+  const project = await projectRepository.findByIdWithPopulate(projectId);
+  if (!project) {
+    throw new NotFoundError('Project not found');
+  }
+
+  // Get weekly efforts for the project
+  const efforts = await projectWeeklyEffortRepository.findAllByProject(projectId);
+
+  // Effort breakdown by resource
+  const resourceMap = new Map<string, number>();
+  efforts.forEach((e) => {
+    const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
+    resourceMap.set(resourceName, (resourceMap.get(resourceName) || 0) + e.hours);
+  });
+  const effortByResource = Array.from(resourceMap.entries()).map(([resource, hours]) => ({
+    resource,
+    hours,
+  }));
+
+  // Budget vs actual over time
+  const budgetTrend = efforts
+    .sort((a, b) => new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime())
+    .map((e, index) => {
+      const actualCost = efforts
+        .slice(0, index + 1)
+        .reduce((sum, effort) => sum + effort.hours * 50, 0);
+      return {
+        week: new Date(e.week_start_date).toISOString().split('T')[0],
+        estimated: project.estimated_budget,
+        actual: actualCost,
+      };
+    });
+
+  // Scope progress over time - fetch from weekly metrics
+  const weeklyMetrics = await projectWeeklyMetricsRepository.findByProject(projectId, { page: 1, limit: 100, sort: 'week_start_date', order: 'asc' });
+  const scopeTrend = weeklyMetrics.data.map((m) => ({
+    week: new Date(m.week_start_date).toISOString().split('T')[0],
+    scope_completed: m.scope_completed || 0,
+  }));
+
+  // Milestone status
+  const milestones = project.milestones.map((m) => ({
+    description: m.description,
+    estimated_date: m.estimated_date,
+    completed_date: m.completed_date,
+    scope_completed: m.scope_completed,
+    status: m.completed_date ? 'Completed' : new Date() > m.estimated_date ? 'Delayed' : 'On Track',
+  }));
+
+  return {
+    project: {
+      _id: project._id.toString(),
+      project_name: project.project_name,
+      customer: isPopulatedCustomer(project.customer) ? project.customer.customer_name : 'Unknown',
+      overall_status: project.overall_status,
+      scope_status: project.scope_status,
+      quality_status: project.quality_status,
+      budget_status: project.budget_status,
+      scope_completed: project.scope_completed,
+      estimated_budget: project.estimated_budget,
+      estimated_effort: project.estimated_effort,
+      start_date: project.start_date,
+      end_date: project.end_date,
+      project_type: project.project_type,
+    },
+    effortByResource,
+    budgetTrend,
+    scopeTrend,
+    milestones,
+    totalEffortHours: efforts.reduce((sum, e) => sum + e.hours, 0),
+    actualCost: efforts.reduce((sum, e) => sum + e.hours * 50, 0),
+  };
+}
+
+export async function getKPIs(userId?: string) {
+  const projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
+
+  const totalProjects = projects.length;
+  const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
+  const onTimeProjects = projects.filter((p) => {
+    if (p.scope_completed < 100) return false;
+    const completedMilestones = p.milestones.filter((m) => m.completed_date);
+    const onTimeMilestones = completedMilestones.filter(
+      (m) => m.completed_date && m.completed_date <= m.estimated_date
+    );
+    return onTimeMilestones.length === completedMilestones.length;
+  }).length;
+
+  const projectIds = projects.map((p) => p._id.toString());
+  const efforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
+
+  let totalEstimatedBudget = 0;
+  let totalActualCost = 0;
+  let totalEstimatedEffort = 0;
+  let totalActualEffort = 0;
+
+  projects.forEach((p, index) => {
+    totalEstimatedBudget += p.estimated_budget;
+    totalEstimatedEffort += p.estimated_effort;
+    const projectEfforts = efforts[index];
+    const actualHours = projectEfforts.reduce((sum, e) => sum + e.hours, 0);
+    totalActualEffort += actualHours;
+    totalActualCost += actualHours * 50;
+  });
+
+  const budgetVariance =
+    totalEstimatedBudget > 0
+      ? ((totalActualCost - totalEstimatedBudget) / totalEstimatedBudget) * 100
+      : 0;
+
+  const scheduleVariance =
+    totalEstimatedEffort > 0
+      ? ((totalActualEffort - totalEstimatedEffort) / totalEstimatedEffort) * 100
+      : 0;
+
+  const completionRate = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0;
+  const onTimeRate = completedProjects > 0 ? (onTimeProjects / completedProjects) * 100 : 0;
+
+  const projectHealthScore =
+    projects.length > 0
+      ? (projects.filter((p) => p.overall_status === 'Green').length / projects.length) * 100
+      : 0;
+
+  // Resource utilization
+  const resourceData = await projectWeeklyEffortRepository.getResourceAllocation(projectIds);
+  const avgUtilization =
+    resourceData.length > 0
+      ? resourceData.reduce((sum, r) => sum + r.total_hours, 0) / resourceData.length / 40
+      : 0; // Assuming 40 hours/week
+
+  return {
+    totalProjects,
+    activeProjects: projects.filter((p) => {
+      const now = new Date();
+      return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
+    }).length,
+    completedProjects,
+    atRiskProjects: projects.filter((p) => p.overall_status === 'Red').length,
+    projectHealthScore: Math.round(projectHealthScore * 10) / 10,
+    budgetVariance: Math.round(budgetVariance * 10) / 10,
+    scheduleVariance: Math.round(scheduleVariance * 10) / 10,
+    resourceUtilization: Math.round(avgUtilization * 100 * 10) / 10,
+    onTimeCompletionRate: Math.round(onTimeRate * 10) / 10,
+    overallCompletionRate: Math.round(completionRate * 10) / 10,
+  };
+}
+
+export async function getTrends(projectId?: string, userId?: string, timeRange: number = 30) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - timeRange);
+
+  let projectIds: string[];
+  if (projectId) {
+    projectIds = [projectId];
+  } else if (userId) {
+    const projects = await projectRepository.findByManager(userId);
+    projectIds = projects.map((p) => p._id.toString());
+  } else {
+    const projects = await projectRepository.findAll();
+    projectIds = projects.map((p) => p._id.toString());
+  }
+
+  const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, startDate);
+  const effortTrend = effortData.map((e) => ({
+    date: e.week_start_date.toISOString().split('T')[0],
+    hours: e.total_hours,
+  }));
+
+  // Budget burn-down
+  const efforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
+  const allEfforts = efforts.flat().filter((e) => new Date(e.week_start_date) >= startDate);
+
+  allEfforts.sort((a, b) => new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime());
+
+  let cumulativeCost = 0;
+  const budgetTrend = allEfforts.map((e) => {
+    cumulativeCost += e.hours * 50;
+    return {
+      date: new Date(e.week_start_date).toISOString().split('T')[0],
+      cost: cumulativeCost,
+    };
+  });
+
+  // Scope completion trend - fetch from weekly metrics
+  const allMetrics = await projectWeeklyMetricsRepository.findWithPagination({}, { page: 1, limit: 1000, sort: 'week_start_date', order: 'asc' });
+  const scopeTrend = allMetrics.data.map((m) => ({
+    date: new Date(m.week_start_date).toISOString().split('T')[0],
+    scope_completed: m.scope_completed || 0,
+    project: isPopulatedProject(m.project) ? m.project.project_name : 'Unknown',
+  }));
+
+  return {
+    effortTrend,
+    budgetTrend,
+    scopeTrend,
+  };
+}
