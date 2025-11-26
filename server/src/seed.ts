@@ -101,7 +101,7 @@ async function seedDatabase() {
       created_by: adminUser._id,
     });
 
-    const customer3 = await Customer.create({
+    await Customer.create({
       customer_name: 'Global Solutions Ltd',
       email: 'hello@globalsolutions.com',
       contact_info: 'Phone: +44-20-1234-5678, Address: 789 Corporate Blvd, London, UK',
@@ -307,9 +307,7 @@ async function seedDatabase() {
       quality_status: RAGStatus.GREEN,
       budget_status: RAGStatus.GREEN,
       customer: customer2._id,
-      project_status: ProjectStatus.ACTIVE,
-      hourly_rate_source: HourlyRateSource.RESOURCE,
-      milestones: [ ProjectStatus.COMPLETED,
+      project_status: ProjectStatus.COMPLETED,
       hourly_rate_source: HourlyRateSource.RESOURCE,
       milestones: [],
     });
@@ -332,8 +330,6 @@ async function seedDatabase() {
       budget_status: RAGStatus.GREEN,
       customer: customer2._id,
       project_status: ProjectStatus.ACTIVE,
-      hourly_rate_source: HourlyRateSource.RESOURCE,
-      milestones: [s: ProjectStatus.ACTIVE,
       hourly_rate: 120,
       hourly_rate_source: HourlyRateSource.PROJECT,
       milestones: [
