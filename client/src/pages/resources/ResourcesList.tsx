@@ -105,7 +105,7 @@ export function ResourcesList() {
 
   return (
     <div>
-      <div className="mb-6 pl-12 lg:pl-0">
+      <div className="mb-6 pl-16 lg:pl-0">
         <h1 className="text-3xl sm:text-3xl font-bold text-gray-900 dark:text-white">Resources</h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Manage your resource information</p>
       </div>
