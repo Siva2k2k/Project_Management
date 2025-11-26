@@ -49,7 +49,7 @@ export interface TrendData {
 
 export interface ProjectDrillDownData {
   project: ProjectSummary;
-  effortByResource: Array<{ resource: string; hours: number }>;
+  effortByResource: Array<{ week: string; [resourceName: string]: number | string }>;
   budgetTrend: Array<{ week: string; estimated: number; actual: number }>;
   scopeTrend: Array<{ week: string; scope_completed: number }>;
   milestones: Array<{
@@ -61,6 +61,8 @@ export interface ProjectDrillDownData {
   }>;
   totalEffortHours: number;
   actualCost: number;
+  effortPercentage: number;
+  costPercentage: number;
 }
 
 export const dashboardService = {

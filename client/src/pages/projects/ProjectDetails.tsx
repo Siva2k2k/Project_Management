@@ -185,6 +185,9 @@ export function ProjectDetails() {
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {project.scope_completed}%
               </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {project.scope_completed} / 100
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
               <CheckCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -202,34 +205,50 @@ export function ProjectDetails() {
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Effort</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {drillDownData.totalEffortHours.toLocaleString()} hrs
+                {drillDownData.effortPercentage}%
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Est: {project.estimated_effort} hrs
+                {drillDownData.totalEffortHours.toLocaleString()} / {project.estimated_effort} hrs
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
               <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
+          <div className="mt-4">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-purple-600 h-2 rounded-full"
+                style={{ width: `${Math.min(drillDownData.effortPercentage, 100)}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-sm text-gray-600 dark:text-gray-400">Actual Cost</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {formatCurrency(drillDownData.actualCost)}
+                {drillDownData.costPercentage}%
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Est: {formatCurrency(project.estimated_budget)}
+                {formatCurrency(drillDownData.actualCost)} / {formatCurrency(project.estimated_budget)}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-green-600 h-2 rounded-full"
+                style={{ width: `${Math.min(drillDownData.costPercentage, 100)}%` }}
+              />
             </div>
           </div>
         </div>
@@ -305,16 +324,32 @@ export function ProjectDetails() {
         {/* Effort by Resource */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Effort by Resource
+            Cumulative Effort by Resource
           </h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={drillDownData.effortByResource}>
+            <LineChart data={drillDownData.effortByResource}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="resource" />
+              <XAxis dataKey="week" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="hours" fill="#3b82f6" name="Hours" />
-            </BarChart>
+              <Legend />
+              {drillDownData.effortByResource.length > 0 &&
+                Object.keys(drillDownData.effortByResource[0])
+                  .filter((key) => key !== 'week')
+                  .map((resourceName, index) => {
+                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+                    return (
+                      <Line
+                        key={resourceName}
+                        type="monotone"
+                        dataKey={resourceName}
+                        stroke={colors[index % colors.length]}
+                        strokeWidth={2}
+                        name={resourceName}
+                      />
+                    );
+                  })}
+            </LineChart>
           </ResponsiveContainer>
         </div>
 

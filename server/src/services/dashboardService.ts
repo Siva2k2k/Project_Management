@@ -239,16 +239,49 @@ export async function getProjectDrillDown(projectId: string) {
   // Get weekly efforts for the project
   const efforts = await projectWeeklyEffortRepository.findAllByProject(projectId);
 
-  // Effort breakdown by resource
-  const resourceMap = new Map<string, number>();
-  efforts.forEach((e) => {
+  // Effort breakdown by resource - cumulative over time
+  const sortedEfforts = efforts.sort((a, b) => 
+    new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime()
+  );
+
+  // Get unique resources
+  const resourceNames = new Set<string>();
+  sortedEfforts.forEach((e) => {
     const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
-    resourceMap.set(resourceName, (resourceMap.get(resourceName) || 0) + e.hours);
+    resourceNames.add(resourceName);
   });
-  const effortByResource = Array.from(resourceMap.entries()).map(([resource, hours]) => ({
-    resource,
-    hours,
-  }));
+
+  // Build cumulative data by week
+  const weekMap = new Map<string, Map<string, number>>();
+  const cumulativeMap = new Map<string, number>();
+  
+  // Initialize cumulative counters
+  resourceNames.forEach(name => cumulativeMap.set(name, 0));
+
+  sortedEfforts.forEach((e) => {
+    const week = new Date(e.week_start_date).toISOString().split('T')[0];
+    const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
+    
+    // Update cumulative hours for this resource
+    const currentCumulative = cumulativeMap.get(resourceName) || 0;
+    cumulativeMap.set(resourceName, currentCumulative + e.hours);
+    
+    // Store week data
+    if (!weekMap.has(week)) {
+      weekMap.set(week, new Map());
+    }
+    const weekData = weekMap.get(week)!;
+    weekData.set(resourceName, cumulativeMap.get(resourceName) || 0);
+  });
+
+  // Convert to array format for chart
+  const effortByResource = Array.from(weekMap.entries()).map(([week, resources]) => {
+    const entry: any = { week };
+    resourceNames.forEach(resourceName => {
+      entry[resourceName] = resources.get(resourceName) || 0;
+    });
+    return entry;
+  });
 
   // Budget vs actual over time
   const budgetTrend = efforts
@@ -280,6 +313,15 @@ export async function getProjectDrillDown(projectId: string) {
     status: m.completed_date ? 'Completed' : new Date() > m.estimated_date ? 'Delayed' : 'On Track',
   }));
 
+  const totalEffortHours = efforts.reduce((sum, e) => sum + e.hours, 0);
+  const actualCost = efforts.reduce((sum, e) => sum + e.hours * 50, 0);
+  const effortPercentage = project.estimated_effort > 0 
+    ? Math.round((totalEffortHours / project.estimated_effort) * 100)
+    : 0;
+  const costPercentage = project.estimated_budget > 0 
+    ? Math.round((actualCost / project.estimated_budget) * 100)
+    : 0;
+
   return {
     project: {
       _id: project._id.toString(),
@@ -300,8 +342,10 @@ export async function getProjectDrillDown(projectId: string) {
     budgetTrend,
     scopeTrend,
     milestones,
-    totalEffortHours: efforts.reduce((sum, e) => sum + e.hours, 0),
-    actualCost: efforts.reduce((sum, e) => sum + e.hours * 50, 0),
+    totalEffortHours,
+    actualCost,
+    effortPercentage,
+    costPercentage,
   };
 }
 
