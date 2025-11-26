@@ -19,6 +19,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Pagination,
 } from '../../components/ui';
 import { CustomerDialog } from './CustomerDialog';
 
@@ -35,7 +36,7 @@ export function CustomersList() {
     customer: null,
   });
 
-  const limit = 10;
+  const limit = 6;
 
   const fetchCustomers = async () => {
     try {
@@ -215,29 +216,13 @@ export function CustomersList() {
           </div>
 
           {/* Pagination */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} customers
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page * limit >= total}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={page}
+            totalPages={Math.ceil(total / limit)}
+            totalItems={total}
+            itemsPerPage={6}
+            onPageChange={setPage}
+          />
         </>
       )}
 

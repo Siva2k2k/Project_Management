@@ -137,6 +137,7 @@ export function CEODashboard() {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
         {/* Projects by Status */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -163,64 +164,6 @@ export function CEODashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Project Progress */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Project Progress
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={data.projectsSummary.slice(0, 6)}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-              <XAxis
-                type="number"
-                domain={[0, 100]}
-                label={{ value: 'Progress (%)', position: 'insideBottom', offset: -5 }}
-                tick={{ fill: 'currentColor' }}
-                className="text-gray-600 dark:text-gray-400"
-              />
-              <YAxis
-                type="category"
-                dataKey="project_name"
-                width={90}
-                tick={{ fontSize: 11, fill: 'currentColor' }}
-                className="text-gray-600 dark:text-gray-400"
-              />
-              <Tooltip
-                formatter={(value: number) => [`${value}%`, 'Progress']}
-                labelFormatter={(label) => `${label}`}
-                contentStyle={{
-                  backgroundColor: 'var(--tooltip-bg)',
-                  border: '1px solid var(--tooltip-border)',
-                  borderRadius: '0.375rem',
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="scope_completed"
-                name="Progress (%)"
-                radius={[0, 4, 4, 0]}
-              >
-                {data.projectsSummary.slice(0, 6).map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={
-                      entry.scope_completed >= 80
-                        ? '#10b981'
-                        : entry.scope_completed >= 50
-                        ? '#f59e0b'
-                        : '#ef4444'
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
         {/* Effort by Week */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -228,51 +171,218 @@ export function CEODashboard() {
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data.effortByWeek}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+              <XAxis 
+                dataKey="week" 
+                tick={{ fill: 'currentColor' }}
+                className="text-gray-600 dark:text-gray-400"
+              />
+              <YAxis 
+                tick={{ fill: 'currentColor' }}
+                className="text-gray-600 dark:text-gray-400"
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'var(--tooltip-bg)',
+                  border: '1px solid var(--tooltip-border)',
+                  borderRadius: '0.375rem',
+                }}
+              />
               <Legend />
               <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </div>
 
-        {/* Budget Utilization */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Budget Utilization (Top 10 Projects)
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.budgetUtilization} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="project" type="category" width={100} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="estimated" fill="#10b981" name="Estimated" />
-              <Bar dataKey="actual" fill="#ef4444" name="Actual" />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Project Progress - Full Width with Horizontal Scroll */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Project Progress
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Completion percentage by project</p>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-emerald-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">≥80%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-amber-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">50-79%</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-red-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">&lt;50%</span>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: `${Math.max(600, data.projectsSummary.length * 70)}px` }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart
+                data={data.projectsSummary}
+                margin={{ top: 10, right: 20, left: 30, bottom: 70 }}
+                onClick={(chartData) => {
+                  if (chartData && chartData.activePayload && chartData.activePayload[0]) {
+                    const projectId = chartData.activePayload[0].payload._id;
+                    if (projectId) navigate(`/projects/${projectId}`);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-200 dark:stroke-gray-700" />
+                <XAxis
+                  dataKey="project_name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={90}
+                  interval={0}
+                  tick={{ fontSize: 11, fill: 'currentColor' }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tickFormatter={(value) => `${value}%`}
+                  tick={{ fontSize: 11, fill: 'currentColor' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={45}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`${value}%`, 'Progress']}
+                  contentStyle={{
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                />
+                <Bar
+                  dataKey="scope_completed"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {data.projectsSummary.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/projects/${entry._id}`)}
+                      fill={
+                        entry.scope_completed >= 80
+                          ? '#10b981'
+                          : entry.scope_completed >= 50
+                          ? '#f59e0b'
+                          : '#ef4444'
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* Resource Allocation */}
+      {/* Budget Utilization - Full Width with Horizontal Scroll */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Resource Allocation
-        </h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data.resourceAllocation}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="resource" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="hours" fill="#3b82f6" name="Total Hours" />
-            <Bar dataKey="projects" fill="#f59e0b" name="Projects" />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Budget Utilization
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Estimated vs Actual budget comparison</p>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-emerald-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">Estimated</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-blue-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">Actual</span>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: `${Math.max(600, data.budgetUtilization.length * 90)}px`, paddingLeft: '20px' }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart
+                data={data.budgetUtilization}
+                margin={{ top: 10, right: 20, left: 20, bottom: 70 }}
+                onClick={(chartData) => {
+                  if (chartData && chartData.activePayload && chartData.activePayload[0]) {
+                    const projectName = chartData.activePayload[0].payload.project;
+                    // Find the project by name in projectsSummary to get the ID
+                    const project = data.projectsSummary.find(p => p.project_name === projectName);
+                    if (project) navigate(`/projects/${project._id}`);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-200 dark:stroke-gray-700" />
+                <XAxis
+                  dataKey="project"
+                  angle={-45}
+                  textAnchor="end"
+                  height={90}
+                  interval={0}
+                  tick={{ fontSize: 11, fill: 'currentColor' }}
+                  axisLine={{ stroke: '#e5e7eb' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                  tick={{ fontSize: 11, fill: 'currentColor' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={55}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                  contentStyle={{
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                />
+                <Bar dataKey="estimated" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ cursor: 'pointer' }}>
+                  {data.budgetUtilization.map((entry, index) => {
+                    const project = data.projectsSummary.find(p => p.project_name === entry.project);
+                    return (
+                      <Cell
+                        key={`est-${index}`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => project && navigate(`/projects/${project._id}`)}
+                        fill="#10b981"
+                      />
+                    );
+                  })}
+                </Bar>
+                <Bar dataKey="actual" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ cursor: 'pointer' }}>
+                  {data.budgetUtilization.map((entry, index) => {
+                    const project = data.projectsSummary.find(p => p.project_name === entry.project);
+                    return (
+                      <Cell
+                        key={`act-${index}`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => project && navigate(`/projects/${project._id}`)}
+                        fill="#3b82f6"
+                      />
+                    );
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       {/* Projects Table */}

@@ -22,6 +22,22 @@ export const ProjectTrackingBy = {
 
 export type ProjectTrackingBy = typeof ProjectTrackingBy[keyof typeof ProjectTrackingBy];
 
+export const ProjectStatus = {
+  ACTIVE: 'Active' as const,
+  COMPLETED: 'Completed' as const,
+  DEFERRED: 'Deferred' as const,
+};
+
+export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
+
+export const HourlyRateSource = {
+  RESOURCE: 'Resource' as const,
+  PROJECT: 'Project' as const,
+  ORGANIZATION: 'Organization' as const,
+};
+
+export type HourlyRateSource = typeof HourlyRateSource[keyof typeof HourlyRateSource];
+
 export interface Milestone {
   _id?: string;
   description: string;
@@ -49,6 +65,9 @@ export interface Project {
   quality_status: RAGStatus;
   budget_status: RAGStatus;
   customer: { _id: string; customer_name: string };
+  project_status: ProjectStatus;
+  hourly_rate?: number;
+  hourly_rate_source: HourlyRateSource;
   is_deleted: boolean;
   last_modified_date: string;
   last_modified_by?: string;
@@ -73,6 +92,9 @@ export interface CreateProjectInput {
   quality_status?: RAGStatus;
   budget_status?: RAGStatus;
   customer: string;
+  project_status?: ProjectStatus;
+  hourly_rate?: number;
+  hourly_rate_source?: HourlyRateSource;
 }
 
 export interface PaginatedResponse<T> {
@@ -97,7 +119,14 @@ const projectService = {
     order?: 'asc' | 'desc';
   }): Promise<PaginatedResponse<Project>> {
     const response = await api.get('/projects', { params });
-    return response.data;
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      page: response.data.pagination.page,
+      limit: response.data.pagination.limit,
+      total: response.data.pagination.total,
+      totalPages: response.data.pagination.totalPages,
+    };
   },
 
   async getById(id: string): Promise<Project> {

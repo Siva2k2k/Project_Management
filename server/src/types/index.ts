@@ -40,6 +40,18 @@ export enum ProjectTrackingBy {
   MILESTONE = 'Milestone',
 }
 
+export enum ProjectStatus {
+  ACTIVE = 'Active',
+  COMPLETED = 'Completed',
+  DEFERRED = 'Deferred',
+}
+
+export enum HourlyRateSource {
+  RESOURCE = 'Resource',
+  PROJECT = 'Project',
+  ORGANIZATION = 'Organization',
+}
+
 export interface IRefreshToken {
   token: string;
   expires: Date;
@@ -116,6 +128,9 @@ export interface IProject extends Document {
   quality_status: RAGStatus;
   budget_status: RAGStatus;
   customer: Types.ObjectId;
+  project_status: ProjectStatus;
+  hourly_rate?: number;
+  hourly_rate_source: HourlyRateSource;
   is_deleted: boolean;
   last_modified_date: Date;
   last_modified_by?: Types.ObjectId;

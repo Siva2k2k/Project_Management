@@ -12,6 +12,8 @@ import {
   RAGStatus,
   Currency,
   ProjectTrackingBy,
+  ProjectStatus,
+  HourlyRateSource,
 } from './types';
 
 dotenv.config();
@@ -180,6 +182,8 @@ async function seedDatabase() {
       quality_status: RAGStatus.GREEN,
       budget_status: RAGStatus.GREEN,
       customer: customer1._id,
+      project_status: ProjectStatus.ACTIVE,
+      hourly_rate_source: HourlyRateSource.RESOURCE,
       milestones: [
         {
           description: 'Requirements & Design Phase',
@@ -232,6 +236,9 @@ async function seedDatabase() {
       quality_status: RAGStatus.GREEN,
       budget_status: RAGStatus.AMBER,
       customer: customer2._id,
+      project_status: ProjectStatus.ACTIVE,
+      hourly_rate: 120,
+      hourly_rate_source: HourlyRateSource.PROJECT,
       milestones: [],
     });
 
@@ -251,7 +258,9 @@ async function seedDatabase() {
       scope_status: RAGStatus.RED,
       quality_status: RAGStatus.AMBER,
       budget_status: RAGStatus.RED,
-      customer: customer3._id,
+      customer: customer1._id,
+      project_status: ProjectStatus.DEFERRED,
+      hourly_rate_source: HourlyRateSource.ORGANIZATION,
       milestones: [
         {
           description: 'Discovery & Planning',
@@ -297,7 +306,11 @@ async function seedDatabase() {
       scope_status: RAGStatus.GREEN,
       quality_status: RAGStatus.GREEN,
       budget_status: RAGStatus.GREEN,
-      customer: customer1._id,
+      customer: customer2._id,
+      project_status: ProjectStatus.ACTIVE,
+      hourly_rate_source: HourlyRateSource.RESOURCE,
+      milestones: [ ProjectStatus.COMPLETED,
+      hourly_rate_source: HourlyRateSource.RESOURCE,
       milestones: [],
     });
 
@@ -318,6 +331,11 @@ async function seedDatabase() {
       quality_status: RAGStatus.GREEN,
       budget_status: RAGStatus.GREEN,
       customer: customer2._id,
+      project_status: ProjectStatus.ACTIVE,
+      hourly_rate_source: HourlyRateSource.RESOURCE,
+      milestones: [s: ProjectStatus.ACTIVE,
+      hourly_rate: 120,
+      hourly_rate_source: HourlyRateSource.PROJECT,
       milestones: [
         {
           description: 'Assessment & Planning',

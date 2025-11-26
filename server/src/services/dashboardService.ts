@@ -3,7 +3,7 @@ import { projectRepository } from '../dbrepo/ProjectRepository';
 import { projectWeeklyEffortRepository } from '../dbrepo/ProjectWeeklyEffortRepository';
 import { projectWeeklyMetricsRepository } from '../dbrepo/ProjectWeeklyMetricsRepository';
 import { NotFoundError } from '../utils/errors';
-import { ICustomer, IResource, IProject as IProjectDoc } from '../types';
+import { ICustomer, IResource, IProject as IProjectDoc, ProjectStatus } from '../types';
 
 // Helper type guards
 function isPopulatedCustomer(customer: Types.ObjectId | ICustomer): customer is ICustomer {
@@ -120,11 +120,8 @@ export async function getManagerDashboard(userId: string): Promise<DashboardData
 
   // Statistics
   const totalProjects = projects.length;
-  const activeProjects = projects.filter((p) => {
-    const now = new Date();
-    return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
-  }).length;
-  const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
+  const activeProjects = projects.filter((p) => p.project_status === ProjectStatus.ACTIVE).length;
+  const completedProjects = projects.filter((p) => p.project_status === ProjectStatus.COMPLETED).length;
   const atRiskProjects = projects.filter((p) => p.overall_status === 'Red').length;
 
   return {
@@ -209,11 +206,8 @@ export async function getCEODashboard(): Promise<DashboardData> {
   }));
 
   const totalProjects = projects.length;
-  const activeProjects = projects.filter((p) => {
-    const now = new Date();
-    return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
-  }).length;
-  const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
+  const activeProjects = projects.filter((p) => p.project_status === ProjectStatus.ACTIVE).length;
+  const completedProjects = projects.filter((p) => p.project_status === ProjectStatus.COMPLETED).length;
   const atRiskProjects = projects.filter((p) => p.overall_status === 'Red').length;
 
   return {
@@ -309,9 +303,9 @@ export async function getKPIs(userId?: string) {
   const projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
 
   const totalProjects = projects.length;
-  const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
+  const completedProjects = projects.filter((p) => p.project_status === ProjectStatus.COMPLETED).length;
   const onTimeProjects = projects.filter((p) => {
-    if (p.scope_completed < 100) return false;
+    if (p.project_status !== ProjectStatus.COMPLETED) return false;
     const completedMilestones = p.milestones.filter((m) => m.completed_date);
     const onTimeMilestones = completedMilestones.filter(
       (m) => m.completed_date && m.completed_date <= m.estimated_date
@@ -363,10 +357,7 @@ export async function getKPIs(userId?: string) {
 
   return {
     totalProjects,
-    activeProjects: projects.filter((p) => {
-      const now = new Date();
-      return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
-    }).length,
+    activeProjects: projects.filter((p) => p.project_status === ProjectStatus.ACTIVE).length,
     completedProjects,
     atRiskProjects: projects.filter((p) => p.overall_status === 'Red').length,
     projectHealthScore: Math.round(projectHealthScore * 10) / 10,

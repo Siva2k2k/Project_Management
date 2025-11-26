@@ -19,12 +19,10 @@ export interface UserListParams {
 export interface PaginatedResponse<T> {
   success: boolean;
   data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface BulkImportUser {
@@ -70,8 +68,15 @@ export const userService = {
   },
 
   async listUsers(params: UserListParams = {}): Promise<PaginatedResponse<User>> {
-    const response = await api.get<PaginatedResponse<User>>('/users', { params });
-    return response.data;
+    const response = await api.get('/users', { params });
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      page: response.data.pagination.page,
+      limit: response.data.pagination.limit,
+      total: response.data.pagination.total,
+      totalPages: response.data.pagination.totalPages,
+    };
   },
 
   async getUserById(id: string): Promise<User> {

@@ -41,13 +41,19 @@ export class BaseRepository<T extends Document> {
     const skip = (page - 1) * limit;
     const sortOrder = order === 'asc' ? 1 : -1;
 
+    // Add is_deleted: false to filter if not already specified
+    const queryFilter: FilterQuery<T> = { 
+      ...filter,
+      ...(!('is_deleted' in filter) && { is_deleted: false })
+    } as FilterQuery<T>;
+
     const [data, total] = await Promise.all([
       this.model
-        .find(filter)
+        .find(queryFilter)
         .sort({ [sort]: sortOrder })
         .skip(skip)
         .limit(limit),
-      this.model.countDocuments(filter),
+      this.model.countDocuments(queryFilter),
     ]);
 
     return {

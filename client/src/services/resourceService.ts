@@ -66,7 +66,14 @@ const resourceService = {
     order?: 'asc' | 'desc';
   }): Promise<PaginatedResponse<Resource>> {
     const response = await api.get('/resources', { params });
-    return response.data;
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      page: response.data.pagination.page,
+      limit: response.data.pagination.limit,
+      total: response.data.pagination.total,
+      totalPages: response.data.pagination.totalPages,
+    };
   },
 
   async getById(id: string): Promise<Resource> {

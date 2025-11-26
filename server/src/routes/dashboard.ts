@@ -59,7 +59,7 @@ router.get(
   authorize(UserRole.MANAGER, UserRole.ADMIN, UserRole.CEO),
   async (req: AuthRequest, res, next) => {
     try {
-      const userId = req.user!.role === UserRole.CEO ? undefined : req.user!._id.toString();
+      const userId = req.user!.role === UserRole.CEO || req.user!.role === UserRole.ADMIN ? undefined : req.user!._id.toString();
       const data = await dashboardService.getKPIs(userId);
       res.json({ success: true, data });
     } catch (error) {
@@ -76,7 +76,7 @@ router.get(
   async (req: AuthRequest, res, next) => {
     try {
       const { projectId, timeRange = '30' } = req.query;
-      const userId = req.user!.role === UserRole.CEO ? undefined : req.user!._id.toString();
+      const userId = req.user!.role === UserRole.CEO || req.user!.role === UserRole.ADMIN ? undefined : req.user!._id.toString();
       const data = await dashboardService.getTrends(
         projectId as string | undefined,
         userId,

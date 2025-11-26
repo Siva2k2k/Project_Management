@@ -6,3 +6,4 @@ export * from './Select';
 export * from './Table';
 export * from './AlertDialog';
 export * from './Switch';
+export * from './Pagination';

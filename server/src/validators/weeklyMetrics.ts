@@ -5,7 +5,7 @@ export const createWeeklyMetricsSchema = z.object({
   week_start_date: z.coerce.date(),
   week_end_date: z.coerce.date(),
   rollup_hours: z.number().min(0, 'Rollup hours cannot be negative'),
-  scope_completed: z.number().min(0, 'Scope completed cannot be negative').max(100, 'Scope completed cannot exceed 100'),
+  scope_completed: z.number(),
   comments: z.string().trim().optional(),
 }).refine((data) => data.week_end_date > data.week_start_date, {
   message: 'Week end date must be after week start date',
@@ -14,7 +14,7 @@ export const createWeeklyMetricsSchema = z.object({
 
 export const updateWeeklyMetricsSchema = z.object({
   rollup_hours: z.number().min(0, 'Rollup hours cannot be negative').optional(),
-  scope_completed: z.number().min(0, 'Scope completed cannot be negative').max(100, 'Scope completed cannot exceed 100').optional(),
+  scope_completed: z.number().optional(),
   comments: z.string().trim().optional(),
 });
 

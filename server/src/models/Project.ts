@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { IProject, IMilestone, ProjectType, RAGStatus, ProjectTrackingBy } from '../types';
+import { IProject, IMilestone, ProjectType, RAGStatus, ProjectTrackingBy, ProjectStatus, HourlyRateSource } from '../types';
 
 const milestoneSchema = new Schema<IMilestone>(
   {
@@ -20,8 +20,6 @@ const milestoneSchema = new Schema<IMilestone>(
     scope_completed: {
       type: Number,
       default: 0,
-      min: [0, 'Scope completed cannot be negative'],
-      max: [100, 'Scope completed cannot exceed 100'],
     },
     completed_date: {
       type: Date,
@@ -69,8 +67,6 @@ const projectSchema = new Schema<IProject>(
     scope_completed: {
       type: Number,
       default: 0,
-      min: [0, 'Scope completed cannot be negative'],
-      max: [100, 'Scope completed cannot exceed 100'],
     },
     milestones: [milestoneSchema],
     overall_status: {
@@ -107,6 +103,20 @@ const projectSchema = new Schema<IProject>(
       type: Schema.Types.ObjectId,
       ref: 'Customer',
       required: [true, 'Customer is required'],
+    },
+    project_status: {
+      type: String,
+      enum: Object.values(ProjectStatus),
+      default: ProjectStatus.ACTIVE,
+    },
+    hourly_rate: {
+      type: Number,
+      min: [0, 'Hourly rate cannot be negative'],
+    },
+    hourly_rate_source: {
+      type: String,
+      enum: Object.values(HourlyRateSource),
+      default: HourlyRateSource.RESOURCE,
     },
     is_deleted: {
       type: Boolean,

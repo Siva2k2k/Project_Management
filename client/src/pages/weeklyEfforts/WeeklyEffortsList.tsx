@@ -4,6 +4,7 @@ import weeklyEffortService from '../../services/weeklyEffortService';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
 import { WeeklyEffortDialog } from './WeeklyEffortDialog';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
@@ -29,6 +30,9 @@ export function WeeklyEffortsList() {
   const [currentWeekEnd, setCurrentWeekEnd] = useState('');
   const [previousWeekStart, setPreviousWeekStart] = useState('');
   const [previousWeekEnd, setPreviousWeekEnd] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
+  const limit = 6;
 
   useEffect(() => {
     calculateWeeks();
@@ -38,7 +42,7 @@ export function WeeklyEffortsList() {
     if (currentWeekStart) {
       fetchProjectsData();
     }
-  }, [currentWeekStart]);
+  }, [currentWeekStart, page]);
 
   const calculateWeeks = () => {
     const now = new Date();
@@ -72,7 +76,7 @@ export function WeeklyEffortsList() {
       setLoading(true);
 
       // Fetch projects - filter by manager if user is a Manager
-      const params: any = { limit: 100 };
+      const params: any = { page, limit };
       
       // Managers can only see their own projects
       if (user?.role === UserRole.MANAGER) {
@@ -81,6 +85,7 @@ export function WeeklyEffortsList() {
 
       const projectsResponse = await projectService.getAll(params);
       const projects = projectsResponse.data;
+      setTotalProjects(projectsResponse.total);
       console.log('Fetched projects:', projects.length);
 
       // Fetch weekly efforts for current and previous weeks
@@ -365,6 +370,19 @@ export function WeeklyEffortsList() {
                 </div>
               );
             })}
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {!loading && projectsData.length > 0 && (
+          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+            <Pagination
+              currentPage={page}
+              totalPages={Math.ceil(totalProjects / limit)}
+              totalItems={totalProjects}
+              itemsPerPage={limit}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

@@ -8,6 +8,8 @@ import { Label } from '../../components/ui/Label';
 import projectService, {
   ProjectType,
   RAGStatus,
+  ProjectStatus,
+  HourlyRateSource,
 } from '../../services/projectService';
 import type { Project, CreateProjectInput } from '../../services/projectService';
 import customerService from '../../services/customerService';
@@ -56,6 +58,9 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
           budget_status: project.budget_status,
           assigned_manager: project.assigned_manager._id,
           customer: project.customer._id,
+          project_status: project.project_status,
+          hourly_rate: project.hourly_rate,
+          hourly_rate_source: project.hourly_rate_source,
         });
       } else {
         reset({
@@ -65,6 +70,8 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
           scope_status: RAGStatus.GREEN,
           quality_status: RAGStatus.GREEN,
           budget_status: RAGStatus.GREEN,
+          project_status: ProjectStatus.ACTIVE,
+          hourly_rate_source: HourlyRateSource.RESOURCE,
           // Auto-select manager if the logged-in user is a Manager
           assigned_manager: user?.role === UserRole.MANAGER ? user._id : '',
         });
@@ -99,15 +106,36 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
   const onSubmit = async (data: CreateProjectInput) => {
     try {
       setLoading(true);
+      
+      // Clean up the data - remove NaN values
+      const cleanedData = {
+        ...data,
+        hourly_rate: (!data.hourly_rate || isNaN(data.hourly_rate as number)) ? undefined : data.hourly_rate,
+      };
+      
+      console.log('Submitting project data:', cleanedData);
       if (project) {
-        await projectService.update(project._id, data);
+        await projectService.update(project._id, cleanedData);
       } else {
-        await projectService.create(data);
+        await projectService.create(cleanedData);
       }
       onSuccess();
     } catch (error: any) {
       console.error('Failed to save project:', error);
-      alert(error.response?.data?.message || 'Failed to save project');
+      console.error('Error response:', error.response?.data);
+      
+      let errorMessage = 'Failed to save project';
+      
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        console.log('Validation errors:', error.response.data.errors);
+        errorMessage = error.response.data.errors
+          .map((e: any) => `${e.field || 'Unknown'}: ${e.message}`)
+          .join('\n');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -294,11 +322,23 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
                 <Input
                   id="scope_completed"
                   type="number"
-                  min="0"
-                  max="100"
+                  step="0.01"
                   {...register('scope_completed', { valueAsNumber: true })}
                   placeholder="0"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="project_status">Project Status</Label>
+                <select
+                  id="project_status"
+                  {...register('project_status')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={ProjectStatus.ACTIVE}>Active</option>
+                  <option value={ProjectStatus.COMPLETED}>Completed</option>
+                  <option value={ProjectStatus.DEFERRED}>Deferred</option>
+                </select>
               </div>
 
               <div>
@@ -351,6 +391,45 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
                   <option value={RAGStatus.AMBER}>Amber</option>
                   <option value={RAGStatus.RED}>Red</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Hourly Rate Configuration */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Hourly Rate Configuration
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="hourly_rate_source">Hourly Rate Source</Label>
+                <select
+                  id="hourly_rate_source"
+                  {...register('hourly_rate_source')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={HourlyRateSource.RESOURCE}>Resource Level</option>
+                  <option value={HourlyRateSource.PROJECT}>Project Level</option>
+                  <option value={HourlyRateSource.ORGANIZATION}>Organization Level</option>
+                </select>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Resource: Use each resource's hourly rate | Project: Use project-specific rate | Organization: Use organization default rate
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="hourly_rate">Project Hourly Rate (Optional)</Label>
+                <Input
+                  id="hourly_rate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register('hourly_rate', { valueAsNumber: true })}
+                  placeholder="Only required if using Project Level rate"
+                />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Required only when 'Hourly Rate Source' is set to 'Project Level'
+                </p>
               </div>
             </div>
           </div>
