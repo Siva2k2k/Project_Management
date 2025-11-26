@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { WeeklyEffortDialog } from './WeeklyEffortDialog';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { getCurrentWeekRange, getPreviousWeekRange, formatDate } from '../../lib/dateUtils';
 
 interface ProjectWeekData {
   project: Project;
@@ -41,30 +42,13 @@ export function WeeklyEffortsList() {
   }, [currentWeekStart]);
 
   const calculateWeeks = () => {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
+    const currentWeek = getCurrentWeekRange();
+    const previousWeek = getPreviousWeekRange();
 
-    // Current week (Sunday to Saturday)
-    const currentStart = new Date(now);
-    currentStart.setDate(now.getDate() - dayOfWeek);
-    currentStart.setHours(0, 0, 0, 0);
-
-    const currentEnd = new Date(currentStart);
-    currentEnd.setDate(currentStart.getDate() + 6);
-    currentEnd.setHours(23, 59, 59, 999);
-
-    // Previous week
-    const previousStart = new Date(currentStart);
-    previousStart.setDate(currentStart.getDate() - 7);
-
-    const previousEnd = new Date(previousStart);
-    previousEnd.setDate(previousStart.getDate() + 6);
-    previousEnd.setHours(23, 59, 59, 999);
-
-    setCurrentWeekStart(currentStart.toISOString().split('T')[0]);
-    setCurrentWeekEnd(currentEnd.toISOString().split('T')[0]);
-    setPreviousWeekStart(previousStart.toISOString().split('T')[0]);
-    setPreviousWeekEnd(previousEnd.toISOString().split('T')[0]);
+    setCurrentWeekStart(currentWeek.start);
+    setCurrentWeekEnd(currentWeek.end);
+    setPreviousWeekStart(previousWeek.start);
+    setPreviousWeekEnd(previousWeek.end);
   };
 
   const fetchProjectsData = async () => {
@@ -135,6 +119,13 @@ export function WeeklyEffortsList() {
     setIsDialogOpen(true);
   };
 
+  const handleAddCustomWeekEntry = (project: Project) => {
+    setSelectedProject(project);
+    setSelectedWeek(null); // No prefilled week for custom entry
+    setEditMode(null);
+    setIsDialogOpen(true);
+  };
+
   const handleEditWeeklyEffort = (projectId: string, weekStart: string, weekEnd: string) => {
     setEditMode({
       projectId,
@@ -156,14 +147,6 @@ export function WeeklyEffortsList() {
     setExpandedProjects(newExpanded);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
   const formatWeekRange = (start: string, end: string) => {
     return `${formatDate(start)} - ${formatDate(end)}`;
   };
@@ -177,25 +160,25 @@ export function WeeklyEffortsList() {
       {/* Header */}
       <div className="flex items-center justify-between pl-16 lg:pl-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Weekly Efforts</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Weekly Efforts</h1>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
             Track weekly progress for all projects
           </p>
         </div>
       </div>
 
       {/* Week Info */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 md:p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
           <div>
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-300">Current Week</p>
-            <p className="text-lg font-semibold text-blue-700 dark:text-blue-400">
+            <p className="text-xs md:text-sm font-medium text-blue-900 dark:text-blue-300">Current Week</p>
+            <p className="text-sm md:text-lg font-semibold text-blue-700 dark:text-blue-400">
               {currentWeekStart && formatWeekRange(currentWeekStart, currentWeekEnd)}
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-300">Previous Week</p>
-            <p className="text-lg font-semibold text-blue-700 dark:text-blue-400">
+            <p className="text-xs md:text-sm font-medium text-blue-900 dark:text-blue-300">Previous Week</p>
+            <p className="text-sm md:text-lg font-semibold text-blue-700 dark:text-blue-400">
               {previousWeekStart && formatWeekRange(previousWeekStart, previousWeekEnd)}
             </p>
           </div>
@@ -220,8 +203,9 @@ export function WeeklyEffortsList() {
               return (
                 <div key={data.project._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   {/* Project Header Row */}
-                  <div className="px-6 py-4">
-                    <div className="flex items-center justify-between">
+                  <div className="px-3 md:px-6 py-3 md:py-4">
+                    {/* Desktop Layout */}
+                    <div className="hidden md:flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1">
                         <button
                           onClick={() => toggleProject(data.project._id)}
@@ -243,7 +227,7 @@ export function WeeklyEffortsList() {
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-6">
+                      <div className="flex items-center space-x-4">
                         {/* Current Week Status */}
                         <div className="text-center min-w-[200px]">
                           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -292,17 +276,119 @@ export function WeeklyEffortsList() {
                             </Button>
                           )}
                         </div>
+
+                        {/* Add Custom Week Entry Button */}
+                        <div className="text-center min-w-[200px]">
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            Past Weeks
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddCustomWeekEntry(data.project)}
+                            className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                            title="Add entry for any past week"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mobile Layout */}
+                    <div className="md:hidden space-y-3">
+                      {/* Project Info */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-2 flex-1">
+                          <button
+                            onClick={() => toggleProject(data.project._id)}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-1"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                              {data.project.project_name}
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {data.project.customer.customer_name}
+                            </p>
+                          </div>
+                        </div>
+                        {/* Add Custom Week Button */}
+                        <button
+                          onClick={() => handleAddCustomWeekEntry(data.project)}
+                          className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex-shrink-0"
+                          title="Add entry for any past week"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Week Entries - Stacked */}
+                      <div className="space-y-2">
+                        {/* Current Week */}
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                            Current Week
+                          </p>
+                          {data.hasCurrentWeekData ? (
+                            <button
+                              onClick={() => handleEditWeeklyEffort(data.project._id, currentWeekStart, currentWeekEnd)}
+                              className="w-full inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors"
+                            >
+                              {data.currentWeekData.length} entries • {getTotalHours(data.currentWeekData)} hrs
+                            </button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="w-full text-xs"
+                              onClick={() => handleAddWeeklyEffort(data.project, currentWeekStart, currentWeekEnd)}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Add Entry
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Previous Week */}
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                            Previous Week
+                          </p>
+                          {data.hasPreviousWeekData ? (
+                            <button
+                              onClick={() => handleEditWeeklyEffort(data.project._id, previousWeekStart, previousWeekEnd)}
+                              className="w-full inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              {data.previousWeekData.length} entries • {getTotalHours(data.previousWeekData)} hrs
+                            </button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-xs"
+                              onClick={() => handleAddWeeklyEffort(data.project, previousWeekStart, previousWeekEnd)}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Add Entry
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Expanded Details */}
                   {isExpanded && (
-                    <div className="px-6 pb-4 bg-gray-50 dark:bg-gray-800/50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="px-3 md:px-6 pb-3 md:pb-4 bg-gray-50 dark:bg-gray-800/50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {/* Current Week Details */}
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                          <h4 className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 md:mb-3">
                             Current Week Details
                           </h4>
                           {data.currentWeekData.length > 0 ? (
@@ -310,21 +396,21 @@ export function WeeklyEffortsList() {
                               {data.currentWeekData.map((entry: any) => (
                                 <div
                                   key={entry._id}
-                                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+                                  className="bg-white dark:bg-gray-800 rounded-lg p-2 md:p-3 border border-gray-200 dark:border-gray-700"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                       {typeof entry.resource === 'object' ? (entry.resource?.resource_name || 'Deleted Resource') : 'Unknown Resource'}
                                     </span>
-                                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                      {entry.hours} hours
+                                    <span className="text-xs md:text-sm font-semibold text-blue-600 dark:text-blue-400 ml-2">
+                                      {entry.hours} hrs
                                     </span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 italic">
                               No entries for this week
                             </p>
                           )}
@@ -332,7 +418,7 @@ export function WeeklyEffortsList() {
 
                         {/* Previous Week Details */}
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                          <h4 className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 md:mb-3">
                             Previous Week Details
                           </h4>
                           {data.previousWeekData.length > 0 ? (
@@ -340,21 +426,21 @@ export function WeeklyEffortsList() {
                               {data.previousWeekData.map((entry: any) => (
                                 <div
                                   key={entry._id}
-                                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+                                  className="bg-white dark:bg-gray-800 rounded-lg p-2 md:p-3 border border-gray-200 dark:border-gray-700"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium text-gray-900 dark:text-white">
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                       {typeof entry.resource === 'object' ? (entry.resource?.resource_name || 'Deleted Resource') : 'Unknown Resource'}
                                     </span>
-                                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                      {entry.hours} hours
+                                    <span className="text-xs md:text-sm font-semibold text-blue-600 dark:text-blue-400 ml-2">
+                                      {entry.hours} hrs
                                     </span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 italic">
                               No entries for this week
                             </p>
                           )}

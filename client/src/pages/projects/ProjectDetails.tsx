@@ -28,6 +28,7 @@ import type { ProjectDrillDownData } from '../../services/dashboardService';
 import { Button } from '../../components/ui/Button';
 import { ProjectDialog } from './ProjectDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { formatDate } from '../../lib/dateUtils';
 
 const STATUS_COLORS: Record<string, string> = {
   Red: '#ef4444',
@@ -68,14 +69,6 @@ export function ProjectDetails() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
   };
 
   const formatCurrency = (amount: number) => {

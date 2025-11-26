@@ -10,6 +10,7 @@ import weeklyMetricsService from '../../services/weeklyMetricsService';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
 import resourceService from '../../services/resourceService';
+import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString } from '../../lib/dateUtils';
 
 interface ResourceEffortEntry {
   resource: string;
@@ -47,6 +48,9 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   ]);
   const [existingMetricsId, setExistingMetricsId] = useState<string | null>(null);
   const [existingEffortIds, setExistingEffortIds] = useState<Map<string, string>>(new Map());
+  const [isCurrentWeek, setIsCurrentWeek] = useState(true);
+  const [isPrefilledWeek, setIsPrefilledWeek] = useState(false);
+  const [projectCurrentScope, setProjectCurrentScope] = useState<number | null>(null);
 
   const {
     register,
@@ -69,20 +73,28 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
         loadExistingData(editMode.projectId, editMode.weekStartDate);
       } else {
         // Create mode - use prefilled data or defaults
-        const weekStart = prefilledWeek?.start || (() => {
-          const today = new Date();
-          const currentDay = today.getDay();
-          const sunday = new Date(today);
-          sunday.setDate(today.getDate() - currentDay);
-          return sunday.toISOString().split('T')[0];
-        })();
-
-        const weekEnd = prefilledWeek?.end || (() => {
-          const startDate = new Date(weekStart);
-          const saturday = new Date(startDate);
-          saturday.setDate(startDate.getDate() + 6);
-          return saturday.toISOString().split('T')[0];
-        })();
+        const currentWeek = getCurrentWeekRange();
+        const weekStart = prefilledWeek?.start || '';
+        const weekEnd = prefilledWeek?.end || '';
+        
+        // Check if this is a prefilled week (current or previous)
+        setIsPrefilledWeek(!!prefilledWeek);
+        
+        // Check if custom week mode (no prefilled week - always past week) or current week
+        if (!prefilledWeek) {
+          setIsCurrentWeek(false); // Custom mode is for past weeks only
+        } else if (prefilledWeek.start === currentWeek.start) {
+          setIsCurrentWeek(true);
+        } else {
+          setIsCurrentWeek(false);
+        }
+        
+        // Fetch project's current scope if creating entry with prefilled project
+        if (prefilledProject) {
+          fetchProjectScope(prefilledProject);
+        } else {
+          setProjectCurrentScope(null);
+        }
 
         reset({
           project: prefilledProject || '',
@@ -101,14 +113,16 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   // Auto-calculate week_end_date when week_start_date changes
   useEffect(() => {
     if (weekStartDate && !editMode) {
-      const startDate = new Date(weekStartDate);
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
-
-      const endDateStr = endDate.toISOString().split('T')[0];
+      const endDateStr = calculateEndDate(weekStartDate, 6);
       setValue('week_end_date', endDateStr);
+      
+      // Check if selected week is current week (for scope disabling)
+      if (!isPrefilledWeek) {
+        const currentWeek = getCurrentWeekRange();
+        setIsCurrentWeek(weekStartDate === currentWeek.start);
+      }
     }
-  }, [weekStartDate, editMode, setValue]);
+  }, [weekStartDate, editMode, setValue, isPrefilledWeek]);
 
   const fetchProjects = async () => {
     try {
@@ -125,6 +139,21 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
       setResources(response.data);
     } catch (error) {
       console.error('Failed to fetch resources:', error);
+    }
+  };
+
+  const fetchProjectScope = async (projectId: string) => {
+    try {
+      const projectResponse = await projectService.getById(projectId);
+      
+      if (projectResponse) {
+        setProjectCurrentScope(projectResponse.scope_completed || 0);
+      } else {
+        setProjectCurrentScope(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch project scope:', error);
+      setProjectCurrentScope(null);
     }
   };
 
@@ -151,10 +180,16 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
 
       if (metrics) {
         setExistingMetricsId(metrics._id);
+        
+        // Check if this is the current week
+        const currentWeek = getCurrentWeekRange();
+        const isEditingCurrentWeek = metrics.week_start_date.split('T')[0] === currentWeek.start;
+        setIsCurrentWeek(isEditingCurrentWeek);
+        
         reset({
           project: projectId,
-          week_start_date: metrics.week_start_date.split('T')[0],
-          week_end_date: metrics.week_end_date.split('T')[0],
+          week_start_date: formatDateForInput(metrics.week_start_date),
+          week_end_date: formatDateForInput(metrics.week_end_date),
           scope_completed: metrics.scope_completed,
           comments: metrics.comments || '',
         });
@@ -203,6 +238,36 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
 
   const calculateTotalHours = () => {
     return resourceEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+  };
+
+  // Filter to allow only Mondays in date picker
+  const handleWeekStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedDate = e.target.value;
+    if (!selectedDate) {
+      setValue('week_start_date', '');
+      return;
+    }
+
+    const date = new Date(selectedDate + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+
+    // If selected date is not Monday, adjust to nearest Monday
+    if (dayOfWeek !== 1) {
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      date.setDate(date.getDate() - daysToSubtract);
+      const mondayDate = toISODateString(date);
+      setValue('week_start_date', mondayDate);
+    } else {
+      setValue('week_start_date', selectedDate);
+    }
+  };
+
+  // Get max date for custom week selection (before previous week)
+  const getMaxSelectableDate = () => {
+    const previousWeek = getPreviousWeekRange();
+    const maxDate = new Date(previousWeek.start);
+    maxDate.setDate(maxDate.getDate() - 1); // Day before previous week Monday
+    return toISODateString(maxDate);
   };
 
   const onSubmit = async (data: WeeklyEffortFormData) => {
@@ -309,6 +374,29 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          {/* Project Current Progress - Show in create mode with prefilled project */}
+          {!editMode && prefilledProject && projectCurrentScope !== null && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-green-900 dark:text-green-300">
+                  Project Current Progress
+                </h3>
+                <span className="text-lg font-bold text-green-700 dark:text-green-400">
+                  {projectCurrentScope}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-500"
+                  style={{ width: `${projectCurrentScope}%` }}
+                />
+              </div>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                Current project scope before this week's update
+              </p>
+            </div>
+          )}
+
           {/* Header Section - Project, Week, Scope, Comments */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-4">
@@ -321,8 +409,8 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
               <select
                 id="project"
                 {...register('project', { required: 'Project is required' })}
-                disabled={!!editMode}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                disabled={!!editMode || !!prefilledProject}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-100 disabled:dark:bg-gray-700 disabled:cursor-not-allowed"
               >
                 <option value="">Select project</option>
                 {projects.map((project) => (
@@ -339,29 +427,37 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
             {/* Week Range */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <Label htmlFor="week_start_date">Week Start Date *</Label>
+                <Label htmlFor="week_start_date">Week Start Date (Monday) *</Label>
                 <Input
                   id="week_start_date"
                   type="date"
                   {...register('week_start_date', { required: 'Week start date is required' })}
-                  disabled={!!editMode}
+                  onChange={handleWeekStartDateChange}
+                  disabled={!!editMode || isPrefilledWeek}
+                  max={!editMode && !isPrefilledWeek ? getMaxSelectableDate() : undefined}
+                  className={editMode || isPrefilledWeek ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}
                 />
                 {errors.week_start_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.week_start_date.message}</p>
                 )}
+                {!editMode && !isPrefilledWeek && (
+                  <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">Select a Monday before previous week</p>
+                )}
               </div>
 
               <div>
-                <Label htmlFor="week_end_date">Week End Date *</Label>
+                <Label htmlFor="week_end_date">Week End Date (Sunday) *</Label>
                 <Input
                   id="week_end_date"
                   type="date"
                   {...register('week_end_date', { required: 'Week end date is required' })}
-                  disabled={!!editMode}
+                  disabled
+                  className="bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
                 />
                 {errors.week_end_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.week_end_date.message}</p>
                 )}
+                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">Auto-calculated (6 days after start)</p>
               </div>
             </div>
 
@@ -381,9 +477,14 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
                   max: { value: 100, message: 'Scope completed cannot exceed 100' },
                 })}
                 placeholder="0"
+                disabled={!isCurrentWeek}
+                className={!isCurrentWeek ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}
               />
               {errors.scope_completed && (
                 <p className="text-red-500 text-sm mt-1">{errors.scope_completed.message}</p>
+              )}
+              {!isCurrentWeek && weekStartDate && (
+                <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">⚠️ Scope cannot be updated for past weeks</p>
               )}
             </div>
 

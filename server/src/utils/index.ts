@@ -2,3 +2,4 @@ export { default as logger } from './logger';
 export * from './errors';
 export * from './response';
 export * from './jwt';
+export * from './dateUtils';

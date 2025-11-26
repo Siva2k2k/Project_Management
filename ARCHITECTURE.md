@@ -940,6 +940,164 @@ router.use('/my-entity', myEntityRoutes);
 
 ---
 
+### Date and Time Handling
+
+The application implements timezone-safe date handling across frontend, backend, and database layers.
+
+#### Key Principles
+
+1. **Database Layer (MongoDB)**: All dates are stored as Date objects in UTC
+2. **Backend Layer**: Use UTC-based date utilities for consistency
+3. **Frontend Layer**: Display dates in user's local timezone, send as ISO date strings (YYYY-MM-DD)
+4. **Week Calculations**: Consistent Monday-Sunday weeks across all layers
+
+#### Date Utility Functions
+
+**Client (`client/src/lib/dateUtils.ts`)**
+```typescript
+import { formatDate, parseISODate, toISODateString, getCurrentWeekRange, 
+         getPreviousWeekRange, calculateEndDate, formatDateForInput } from '@/lib/dateUtils';
+
+// Format date for display
+formatDate('2025-11-26'); // "Nov 26, 2025"
+
+// Get current week range
+const { start, end } = getCurrentWeekRange(); // Returns ISO date strings
+
+// Calculate week end date
+const endDate = calculateEndDate('2025-11-26', 6); // 6 days after start
+
+// Format for input[type="date"]
+const inputValue = formatDateForInput(new Date()); // "YYYY-MM-DD"
+```
+
+**Server (`server/src/utils/dateUtils.ts`)**
+```typescript
+import { parseISODateToUTC, toISODateString, getDaysAgoUTC, isValidDateRange,
+         isDateInRange, formatForMongoQuery } from '../utils/dateUtils';
+
+// Parse ISO date to UTC midnight
+const date = parseISODateToUTC('2025-11-26'); // Date object at UTC midnight
+
+// Validate date range
+if (!isValidDateRange(startDate, endDate)) {
+  throw new ValidationError('Invalid date range');
+}
+
+// Format for MongoDB query
+const queryDate = formatForMongoQuery('2025-11-26');
+
+// Get dates for time-based queries
+const twelveWeeksAgo = getDaysAgoUTC(84);
+```
+
+#### Common Date Patterns
+
+**Frontend: Weekly Effort Form**
+```typescript
+// Use utilities for week calculations
+const currentWeek = getCurrentWeekRange();
+setValue('week_start_date', currentWeek.start);
+setValue('week_end_date', currentWeek.end);
+
+// Auto-calculate end date when start changes
+const endDate = calculateEndDate(weekStartDate, 6);
+```
+
+**Frontend: Display Dates**
+```typescript
+// Use formatDate for consistent display
+<p>{formatDate(project.start_date)}</p>
+
+// For input fields
+<input type="date" value={formatDateForInput(date)} />
+```
+
+**Backend: Date Validation**
+```typescript
+// Always validate date ranges
+if (!isValidDateRange(data.week_start_date, data.week_end_date)) {
+  throw new ValidationError('Week end date must be after week start date');
+}
+```
+
+**Backend: MongoDB Queries**
+```typescript
+// Use parseISODateToUTC for date filters
+if (filters.week_start_date) {
+  query.week_start_date = parseISODateToUTC(filters.week_start_date);
+}
+
+// Use date utilities for aggregations
+const twelveWeeksAgo = getDaysAgoUTC(84);
+const efforts = await repository.getEffortByWeek(projectIds, twelveWeeksAgo);
+
+// Format dates in responses
+const result = data.map(item => ({
+  ...item,
+  week: toISODateString(item.week_start_date)
+}));
+```
+
+#### Timezone Conversion Issues to Avoid
+
+**❌ Don't Do This:**
+```typescript
+// Client - Wrong: Creates timezone issues
+const date = new Date(isoString); // Time component causes timezone shift
+const formatted = date.toLocaleDateString(); // May show wrong date
+
+// Server - Wrong: Inconsistent date handling
+const date = new Date(dateString); // May interpret as local time
+query.date = dateString; // String comparison in MongoDB
+```
+
+**✅ Do This Instead:**
+```typescript
+// Client - Correct: Parse ISO date in local timezone
+const date = parseISODate(isoString); // No timezone conversion
+const formatted = formatDate(isoString); // Consistent formatting
+
+// Server - Correct: Parse to UTC midnight
+const date = parseISODateToUTC(dateString); // Always UTC
+query.date = formatForMongoQuery(dateString); // Date object for MongoDB
+```
+
+#### Week Start Date Calculation
+
+All week calculations use Monday as the first day of the week (Monday to Sunday):
+
+**Client:**
+```typescript
+const currentWeek = getCurrentWeekRange();
+// Returns: { start: "2025-11-24", end: "2025-11-30" } for a date in that week (Mon-Sun)
+```
+
+**Server:**
+```typescript
+const weekStart = getWeekStartDateUTC(new Date());
+// Returns Date object for Monday at UTC midnight
+```
+
+#### Testing Date Handling
+
+When testing across timezones:
+1. Test with dates near month/year boundaries
+2. Test from different timezone contexts (UTC+/UTC-)
+3. Verify week calculations align between client and server
+4. Check date display doesn't shift by ±1 day
+
+#### Migration Notes
+
+When adding new date fields:
+1. Use `Date` type in MongoDB schema
+2. Store as UTC Date objects
+3. Use date utilities for all date operations
+4. Return ISO date strings (YYYY-MM-DD) for date-only fields
+5. Return ISO timestamps for datetime fields
+
+---
+
 ### Code Style Guidelines
 
 #### TypeScript

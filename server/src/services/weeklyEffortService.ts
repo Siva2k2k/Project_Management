@@ -6,7 +6,7 @@ import {
   ValidationError,
   InternalError,
 } from '../utils/errors';
-import { logger } from '../utils';
+import { logger, parseISODateToUTC, isValidDateRange } from '../utils';
 import { IProjectWeeklyEffort, PaginationQuery } from '../types';
 import {
   CreateWeeklyEffortInput,
@@ -27,7 +27,7 @@ class WeeklyEffortService {
   ): Promise<IProjectWeeklyEffort> {
     try {
       // Validate dates
-      if (new Date(data.week_end_date) <= new Date(data.week_start_date)) {
+      if (!isValidDateRange(data.week_start_date, data.week_end_date)) {
         throw new ValidationError('Week end date must be after week start date');
       }
 
@@ -82,7 +82,7 @@ class WeeklyEffortService {
       }
 
       if (filters.week_start_date) {
-        query.week_start_date = filters.week_start_date;
+        query.week_start_date = parseISODateToUTC(filters.week_start_date);
       }
 
       const result = await projectWeeklyEffortRepository.findWithPagination(query, pagination);

@@ -9,6 +9,7 @@ import { ProjectDialog } from './ProjectDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { formatDate } from '../../lib/dateUtils';
 
 const STATUS_COLORS: Record<string, string> = {
   Red: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
@@ -97,14 +98,6 @@ export function ProjectsList() {
 
   const handleView = (projectId: string) => {
     navigate(`/projects/${projectId}`);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
   };
 
   return (

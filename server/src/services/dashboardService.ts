@@ -3,6 +3,7 @@ import { projectRepository } from '../dbrepo/ProjectRepository';
 import { projectWeeklyEffortRepository } from '../dbrepo/ProjectWeeklyEffortRepository';
 import { projectWeeklyMetricsRepository } from '../dbrepo/ProjectWeeklyMetricsRepository';
 import { NotFoundError } from '../utils/errors';
+import { getDaysAgoUTC, toISODateString, isDateInRange } from '../utils/dateUtils';
 import { ICustomer, IResource, IProject as IProjectDoc } from '../types';
 
 // Helper type guards
@@ -88,12 +89,11 @@ export async function getManagerDashboard(userId: string): Promise<DashboardData
 
   // Effort by week - last 12 weeks
   const projectIds = projects.map((p) => p._id.toString());
-  const twelveWeeksAgo = new Date();
-  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+  const twelveWeeksAgo = getDaysAgoUTC(84);
 
   const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, twelveWeeksAgo);
   const effortByWeek = effortData.map((e) => ({
-    week: e.week_start_date.toISOString().split('T')[0],
+    week: toISODateString(e.week_start_date),
     hours: e.total_hours,
   }));
 
@@ -122,7 +122,7 @@ export async function getManagerDashboard(userId: string): Promise<DashboardData
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => {
     const now = new Date();
-    return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
+    return isDateInRange(now, p.start_date, p.end_date);
   }).length;
   const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
   const atRiskProjects = projects.filter((p) => p.overall_status === 'Red').length;
@@ -180,12 +180,11 @@ export async function getCEODashboard(): Promise<DashboardData> {
   }));
 
   const projectIds = projects.map((p) => p._id.toString());
-  const twelveWeeksAgo = new Date();
-  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+  const twelveWeeksAgo = getDaysAgoUTC(84);
 
   const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, twelveWeeksAgo);
   const effortByWeek = effortData.map((e) => ({
-    week: e.week_start_date.toISOString().split('T')[0],
+    week: toISODateString(e.week_start_date),
     hours: e.total_hours,
   }));
 
@@ -211,7 +210,7 @@ export async function getCEODashboard(): Promise<DashboardData> {
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => {
     const now = new Date();
-    return new Date(p.start_date) <= now && new Date(p.end_date) >= now;
+    return isDateInRange(now, p.start_date, p.end_date);
   }).length;
   const completedProjects = projects.filter((p) => p.scope_completed === 100).length;
   const atRiskProjects = projects.filter((p) => p.overall_status === 'Red').length;
@@ -259,7 +258,7 @@ export async function getProjectDrillDown(projectId: string) {
   resourceNames.forEach(name => cumulativeMap.set(name, 0));
 
   sortedEfforts.forEach((e) => {
-    const week = new Date(e.week_start_date).toISOString().split('T')[0];
+    const week = toISODateString(e.week_start_date);
     const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
     
     // Update cumulative hours for this resource
@@ -291,7 +290,7 @@ export async function getProjectDrillDown(projectId: string) {
         .slice(0, index + 1)
         .reduce((sum, effort) => sum + effort.hours * 50, 0);
       return {
-        week: new Date(e.week_start_date).toISOString().split('T')[0],
+        week: toISODateString(e.week_start_date),
         estimated: project.estimated_budget,
         actual: actualCost,
       };
@@ -300,7 +299,7 @@ export async function getProjectDrillDown(projectId: string) {
   // Scope progress over time - fetch from weekly metrics
   const weeklyMetrics = await projectWeeklyMetricsRepository.findByProject(projectId, { page: 1, limit: 100, sort: 'week_start_date', order: 'asc' });
   const scopeTrend = weeklyMetrics.data.map((m) => ({
-    week: new Date(m.week_start_date).toISOString().split('T')[0],
+    week: toISODateString(m.week_start_date),
     scope_completed: m.scope_completed || 0,
   }));
 
@@ -439,7 +438,7 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
 
   const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, startDate);
   const effortTrend = effortData.map((e) => ({
-    date: e.week_start_date.toISOString().split('T')[0],
+    date: toISODateString(e.week_start_date),
     hours: e.total_hours,
   }));
 
@@ -453,7 +452,7 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
   const budgetTrend = allEfforts.map((e) => {
     cumulativeCost += e.hours * 50;
     return {
-      date: new Date(e.week_start_date).toISOString().split('T')[0],
+      date: toISODateString(e.week_start_date),
       cost: cumulativeCost,
     };
   });
@@ -461,7 +460,7 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
   // Scope completion trend - fetch from weekly metrics
   const allMetrics = await projectWeeklyMetricsRepository.findWithPagination({}, { page: 1, limit: 1000, sort: 'week_start_date', order: 'asc' });
   const scopeTrend = allMetrics.data.map((m) => ({
-    date: new Date(m.week_start_date).toISOString().split('T')[0],
+    date: toISODateString(m.week_start_date),
     scope_completed: m.scope_completed || 0,
     project: isPopulatedProject(m.project) ? m.project.project_name : 'Unknown',
   }));
