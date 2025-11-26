@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Switch,
+  Pagination,
 } from '../../components/ui';
 import { ResourceDialog } from './ResourceDialog';
 
@@ -29,14 +30,13 @@ export function ResourcesList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const limit = 6;
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; resource: Resource | null }>({
     open: false,
     resource: null,
   });
-
-  const limit = 10;
 
   const fetchResources = async () => {
     try {
@@ -63,12 +63,12 @@ export function ResourcesList() {
 
   const handleCreate = () => {
     setSelectedResource(null);
-    setDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
   const handleEdit = (resource: Resource) => {
     setSelectedResource(resource);
-    setDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -96,7 +96,7 @@ export function ResourcesList() {
   };
 
   const handleDialogSuccess = () => {
-    setDialogOpen(false);
+    setIsDialogOpen(false);
     setSelectedResource(null);
     fetchResources();
   };
@@ -253,36 +253,20 @@ export function ResourcesList() {
           </div>
 
           {/* Pagination */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} resources
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page * limit >= total}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={page}
+            totalPages={Math.ceil(total / limit)}
+            totalItems={total}
+            itemsPerPage={6}
+            onPageChange={setPage}
+          />
         </>
       )}
 
       {/* Create/Edit Dialog */}
       <ResourceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         resource={selectedResource}
         onSuccess={handleDialogSuccess}
       />

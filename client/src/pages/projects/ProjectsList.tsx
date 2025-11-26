@@ -5,6 +5,7 @@ import projectService, { RAGStatus, ProjectType } from '../../services/projectSe
 import type { Project } from '../../services/projectService';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Pagination } from '../../components/ui/Pagination';
 import { ProjectDialog } from './ProjectDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +28,7 @@ export function ProjectsList() {
   const [typeFilter, setTypeFilter] = useState<ProjectType | ''>('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Project | null>(null);
@@ -51,7 +53,7 @@ export function ProjectsList() {
         order: 'asc' | 'desc';
       } = {
         page,
-        limit: 10,
+        limit: 6,
         search: searchTerm || undefined,
         overall_status: statusFilter || undefined,
         project_type: typeFilter || undefined,
@@ -67,6 +69,7 @@ export function ProjectsList() {
       const response = await projectService.getAll(params);
       setProjects(response.data);
       setTotalPages(response.totalPages);
+      setTotal(response.total);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
@@ -300,49 +303,14 @@ export function ProjectsList() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="bg-white dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 sm:px-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 flex justify-between sm:hidden">
-                    <Button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      variant="outline"
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                      variant="outline"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Page <span className="font-medium">{page}</span> of{' '}
-                        <span className="font-medium">{totalPages}</span>
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        variant="outline"
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        variant="outline"
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+              <div className="bg-white dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={total}
+                  itemsPerPage={6}
+                  onPageChange={setPage}
+                />
               </div>
             )}
           </>

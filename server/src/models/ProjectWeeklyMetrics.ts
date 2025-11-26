@@ -24,8 +24,6 @@ const projectWeeklyMetricsSchema = new Schema<IProjectWeeklyMetrics>(
     scope_completed: {
       type: Number,
       required: [true, 'Scope completed is required'],
-      min: [0, 'Scope completed cannot be negative'],
-      max: [100, 'Scope completed cannot exceed 100'],
     },
     comments: {
       type: String,

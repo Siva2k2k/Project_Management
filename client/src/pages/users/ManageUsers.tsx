@@ -19,6 +19,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Pagination,
 } from '../../components/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/Select';
 import { UserDialog } from './UserDialog';
@@ -43,7 +44,7 @@ export function ManageUsers() {
     user: null,
   });
 
-  const limit = 10;
+  const limit = 6;
 
   const fetchUsers = async () => {
     try {
@@ -66,7 +67,7 @@ export function ManageUsers() {
 
       const response = await userService.listUsers(params);
       setUsers(response.data);
-      setTotal(response.pagination.total);
+      setTotal(response.total);
     } catch (error) {
       console.error('Failed to fetch users:', error);
     } finally {
@@ -295,29 +296,15 @@ export function ManageUsers() {
           </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Page {page} of {totalPages} ({total} total users)
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-              >
-                Next
-              </Button>
-            </div>
+        {total > limit && (
+          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+            <Pagination
+              currentPage={page}
+              totalPages={Math.ceil(total / limit)}
+              totalItems={total}
+              itemsPerPage={6}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

@@ -60,7 +60,9 @@ export class ProjectRepository extends BaseRepository<IProject> {
     filters: ProjectFilter,
     pagination: PaginationQuery = {}
   ): Promise<PaginatedResult<IProject>> {
-    const query: Record<string, unknown> = {};
+    const query: Record<string, unknown> = {
+      is_deleted: false,
+    };
 
     if (filters.assigned_manager) {
       query.assigned_manager = filters.assigned_manager;
