@@ -6,6 +6,8 @@ import {
   DollarSign,
   Clock,
   CheckCircle,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -24,6 +26,8 @@ import type { Project } from '../../services/projectService';
 import { dashboardService } from '../../services/dashboardService';
 import type { ProjectDrillDownData } from '../../services/dashboardService';
 import { Button } from '../../components/ui/Button';
+import { ProjectDialog } from './ProjectDialog';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 const STATUS_COLORS: Record<string, string> = {
   Red: '#ef4444',
@@ -38,6 +42,8 @@ export function ProjectDetails() {
   const [drillDownData, setDrillDownData] = useState<ProjectDrillDownData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -79,6 +85,29 @@ export function ProjectDetails() {
     }).format(amount);
   };
 
+  const handleEdit = () => {
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+
+    try {
+      await projectService.delete(id);
+      navigate('/projects');
+    } catch (err: any) {
+      console.error('Failed to delete project:', err);
+      alert(err.response?.data?.message || 'Failed to delete project');
+    }
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditDialogOpen(false);
+    if (id) {
+      fetchProjectDetails();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -116,15 +145,35 @@ export function ProjectDetails() {
             </p>
           </div>
         </div>
-        <span
-          className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium"
-          style={{
-            backgroundColor: STATUS_COLORS[project.overall_status] + '20',
-            color: STATUS_COLORS[project.overall_status],
-          }}
-        >
-          {project.overall_status} Status
-        </span>
+        <div className="flex items-center space-x-3">
+          <span
+            className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium"
+            style={{
+              backgroundColor: STATUS_COLORS[project.overall_status] + '20',
+              color: STATUS_COLORS[project.overall_status],
+            }}
+          >
+            {project.overall_status} Status
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleEdit}
+            title="Edit Project"
+            className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+          >
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            title="Delete Project"
+            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Key Metrics */}
@@ -389,6 +438,25 @@ export function ProjectDetails() {
           </div>
         </div>
       )}
+
+      {/* Edit Project Dialog */}
+      <ProjectDialog
+        open={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSuccess={handleEditSuccess}
+        project={project}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Project"
+        description={`Are you sure you want to delete "${project?.project_name}"? This action cannot be undone and will remove all associated data.`}
+        confirmText="Delete"
+        variant="destructive"
+      />
     </div>
   );
 }
