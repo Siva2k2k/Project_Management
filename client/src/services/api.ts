@@ -61,7 +61,8 @@ api.interceptors.response.use(
     };
 
     // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't try to refresh if the failed request itself was a refresh attempt
+    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
       if (isRefreshing) {
         // Queue the request while token is being refreshed
         return new Promise((resolve, reject) => {
@@ -96,17 +97,6 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError as Error, null);
         setAccessToken(null);
-
-        // Only redirect to login if not already on a public route
-        // and not during initial auth check
-        const isPublicRoute = window.location.pathname.startsWith('/login') ||
-                              window.location.pathname.startsWith('/register') ||
-                              window.location.pathname.startsWith('/forgot-password') ||
-                              window.location.pathname.startsWith('/reset-password');
-
-        if (!isPublicRoute && originalRequest.url !== '/auth/refresh') {
-          window.location.href = '/login';
-        }
 
         return Promise.reject(refreshError);
       } finally {
