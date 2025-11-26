@@ -97,8 +97,16 @@ api.interceptors.response.use(
         processQueue(refreshError as Error, null);
         setAccessToken(null);
 
-        // Redirect to login on refresh failure
-        window.location.href = '/login';
+        // Only redirect to login if not already on a public route
+        // and not during initial auth check
+        const isPublicRoute = window.location.pathname.startsWith('/login') ||
+                              window.location.pathname.startsWith('/register') ||
+                              window.location.pathname.startsWith('/forgot-password') ||
+                              window.location.pathname.startsWith('/reset-password');
+
+        if (!isPublicRoute && originalRequest.url !== '/auth/refresh') {
+          window.location.href = '/login';
+        }
 
         return Promise.reject(refreshError);
       } finally {

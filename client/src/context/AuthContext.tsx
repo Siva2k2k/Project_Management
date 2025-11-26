@@ -42,6 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(profile);
           } catch (refreshError) {
             // No valid refresh token - user is not authenticated
+            // Don't redirect here, let ProtectedRoute handle it
             setUser(null);
             setAccessToken(null);
           }
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         setAccessToken(null);
       } finally {
+        // Always set loading to false, even if there were errors
         setIsLoading(false);
       }
     };
