@@ -57,7 +57,7 @@ export function KPIDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="pl-12 lg:pl-0">
+      <div className="pl-16 lg:pl-0">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">KPI Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
           Key Performance Indicators and Metrics

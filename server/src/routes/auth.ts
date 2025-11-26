@@ -96,6 +96,12 @@ router.post(
         accessToken: result.accessToken,
       }, 'Token refreshed successfully');
     } catch (error) {
+      // Clear the invalid refresh token cookie
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+      });
       next(error);
     }
   }

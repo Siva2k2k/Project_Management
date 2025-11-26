@@ -1,0 +1,34 @@
+Perfect! All the issues have been fixed. Let me create a summary of what was done:
+
+  Fixed Both Issues ✅
+
+  I've successfully resolved both problems:
+
+  Issue 1: Hamburger Menu Overlapping Page Title
+
+  Root Cause: The hamburger button is positioned at left-4 (16px) with a width of approximately 40px. The page headers had pl-12 (48px) padding, which wasn't enough
+   to clear the button.
+
+  Fix: Updated padding from pl-12 to pl-16 (64px) on mobile in all affected pages:
+  - client/src/pages/projects/ProjectsList.tsx:113
+  - client/src/pages/weeklyEfforts/WeeklyEffortsList.tsx:178
+  - client/src/pages/profile/Profile.tsx:112
+  - client/src/pages/users/ManageUsers.tsx:139
+  - client/src/pages/dashboard/TrendsDashboard.tsx:61
+  - client/src/pages/resources/ResourcesList.tsx:108
+  - client/src/pages/dashboard/ManagerDashboard.tsx:72
+  - client/src/pages/dashboard/KPIDashboard.tsx:60
+  - client/src/pages/dashboard/CEODashboard.tsx:72
+  - client/src/pages/projects/ProjectDetails.tsx:104
+  - client/src/pages/customers/CustomersList.tsx:93
+
+  Issue 2: Mobile Browser Showing Spinner (Page Not Loading)
+
+  Root Cause: The spinner in ProtectedRoute.tsx:18 was using border-primary-600 which doesn't exist in your Tailwind configuration, making the spinner invisible.
+  Users couldn't see the loading indicator, making it seem like the page was stuck.
+
+  Fix: Updated the spinner styling in client/src/components/ProtectedRoute.tsx:17-19:
+  - Changed border-primary-600 to border-blue-600 (which is properly defined)
+  - Added background color bg-gray-50 dark:bg-gray-900 for better visibility
+
+  Now the spinner is visible and users will see the loading state properly on mobile browsers!

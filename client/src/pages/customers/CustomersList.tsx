@@ -90,9 +90,9 @@ export function CustomersList() {
 
   return (
     <div>
-      <div className="mb-6 pl-12 lg:pl-0">
-        <h1 className="text-3xl sm:text-3xl font-bold text-gray-900">Customers</h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1">Manage your customer information</p>
+      <div className="mb-6 pl-16 lg:pl-0">
+        <h1 className="text-3xl sm:text-3xl font-bold text-gray-900 dark:text-white">Customers</h1>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Manage your customer information</p>
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -116,16 +116,16 @@ export function CustomersList() {
 
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       ) : customers.length === 0 ? (
-        <div className="text-center py-12 border border-gray-200 rounded-lg">
-          <p className="text-gray-500">No customers found</p>
+        <div className="text-center py-12 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+          <p className="text-gray-500 dark:text-gray-400">No customers found</p>
         </div>
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
+          <div className="hidden md:block border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -139,16 +139,17 @@ export function CustomersList() {
               <TableBody>
                 {customers.map((customer) => (
                   <TableRow key={customer._id}>
-                    <TableCell className="font-medium">{customer.customer_name}</TableCell>
-                    <TableCell>{customer.email}</TableCell>
-                    <TableCell>{customer.contact_info || '-'}</TableCell>
-                    <TableCell>{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-medium text-gray-900 dark:text-white">{customer.customer_name}</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">{customer.email}</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">{customer.contact_info || '-'}</TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(customer)}
+                          className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -156,8 +157,9 @@ export function CustomersList() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteDialog({ open: true, customer })}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -170,14 +172,15 @@ export function CustomersList() {
           {/* Mobile Card View */}
           <div className="md:hidden space-y-4">
             {customers.map((customer) => (
-              <div key={customer._id} className="border border-gray-200 rounded-lg p-4 bg-white">
+              <div key={customer._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold text-lg">{customer.customer_name}</h3>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{customer.customer_name}</h3>
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(customer)}
+                      className="text-green-600 dark:text-green-400"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -185,25 +188,26 @@ export function CustomersList() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteDialog({ open: true, customer })}
+                      className="text-red-600 dark:text-red-400"
                     >
-                      <Trash2 className="h-4 w-4 text-red-600" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-gray-500">Email:</span>
-                    <p className="text-gray-900">{customer.email}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                    <p className="text-gray-900 dark:text-white">{customer.email}</p>
                   </div>
                   {customer.contact_info && (
                     <div>
-                      <span className="text-gray-500">Contact:</span>
-                      <p className="text-gray-900">{customer.contact_info}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Contact:</span>
+                      <p className="text-gray-900 dark:text-white">{customer.contact_info}</p>
                     </div>
                   )}
                   <div>
-                    <span className="text-gray-500">Created:</span>
-                    <p className="text-gray-900">{new Date(customer.createdAt).toLocaleDateString()}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Created:</span>
+                    <p className="text-gray-900 dark:text-white">{new Date(customer.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
               </div>
@@ -212,7 +216,7 @@ export function CustomersList() {
 
           {/* Pagination */}
           <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} customers
             </p>
             <div className="flex gap-2">

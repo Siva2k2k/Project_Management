@@ -17,31 +17,43 @@ export class ProjectRepository extends BaseRepository<IProject> {
   }
 
   async findByManager(managerId: string | Types.ObjectId): Promise<IProject[]> {
-    return this.model
+    const data = await this.model
       .find({ assigned_manager: managerId, is_deleted: false })
       .populate('customer', 'customer_name')
       .populate('assigned_manager', 'name email');
+    
+    // Filter out projects with null references
+    return data.filter(item => item.customer && item.assigned_manager);
   }
 
   async findAll(): Promise<IProject[]> {
-    return this.model
+    const data = await this.model
       .find({ is_deleted: false })
       .populate('customer', 'customer_name')
       .populate('assigned_manager', 'name email');
+    
+    // Filter out projects with null references
+    return data.filter(item => item.customer && item.assigned_manager);
   }
 
   async findByCustomer(customerId: string | Types.ObjectId): Promise<IProject[]> {
-    return this.model
+    const data = await this.model
       .find({ customer: customerId })
       .populate('customer', 'customer_name')
       .populate('assigned_manager', 'name email');
+    
+    // Filter out projects with null references
+    return data.filter(item => item.customer && item.assigned_manager);
   }
 
   async findByStatus(status: RAGStatus): Promise<IProject[]> {
-    return this.model
+    const data = await this.model
       .find({ overall_status: status })
       .populate('customer', 'customer_name')
       .populate('assigned_manager', 'name email');
+    
+    // Filter out projects with null references
+    return data.filter(item => item.customer && item.assigned_manager);
   }
 
   async findWithFilters(
@@ -74,7 +86,7 @@ export class ProjectRepository extends BaseRepository<IProject> {
     const skip = (page - 1) * limit;
     const sortOrder = order === 'asc' ? 1 : -1;
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find(query)
         .populate('customer', 'customer_name')
@@ -84,6 +96,9 @@ export class ProjectRepository extends BaseRepository<IProject> {
         .limit(limit),
       this.model.countDocuments(query),
     ]);
+
+    // Filter out projects with null references
+    const data = rawData.filter(item => item.customer && item.assigned_manager);
 
     return {
       data,

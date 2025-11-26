@@ -16,7 +16,7 @@ class ProjectWeeklyMetricsRepository extends BaseRepository<IProjectWeeklyMetric
     const skip = (page - 1) * limit;
     const sortOrder = order === 'asc' ? 1 : -1;
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find(filter)
         .populate('project', 'project_name')
@@ -25,6 +25,9 @@ class ProjectWeeklyMetricsRepository extends BaseRepository<IProjectWeeklyMetric
         .limit(limit),
       this.model.countDocuments(filter),
     ]);
+
+    // Filter out entries with null project references
+    const data = rawData.filter(item => item.project);
 
     return {
       data,

@@ -37,11 +37,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // No access token in memory - try to refresh from httpOnly cookie
           // This handles the case when the app hot reloads and loses in-memory token
           try {
-            await authService.refreshToken();
-            const profile = await authService.getProfile();
-            setUser(profile);
+            const newAccessToken = await authService.refreshToken();
+            // Only try to get profile if refresh was successful
+            if (newAccessToken) {
+              const profile = await authService.getProfile();
+              setUser(profile);
+            } else {
+              setUser(null);
+              setAccessToken(null);
+            }
           } catch (refreshError) {
             // No valid refresh token - user is not authenticated
+            // Don't redirect here, let ProtectedRoute handle it
             setUser(null);
             setAccessToken(null);
           }
@@ -51,6 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         setAccessToken(null);
       } finally {
+        // Always set loading to false, even if there were errors
         setIsLoading(false);
       }
     };

@@ -17,7 +17,7 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
     const skip = (page - 1) * limit;
     const sortOrder = order === 'asc' ? 1 : -1;
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find(filter)
         .populate('project', 'project_name')
@@ -27,6 +27,9 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
         .limit(limit),
       this.model.countDocuments(filter),
     ]);
+
+    // Filter out entries with null references
+    const data = rawData.filter(item => item.project && item.resource);
 
     return {
       data,
@@ -45,7 +48,7 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
     const skip = (page - 1) * limit;
     const sortOrder = order === 'asc' ? 1 : -1;
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find({ project: projectId })
         .populate('resource', 'resource_name email')
@@ -54,6 +57,9 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
         .limit(limit),
       this.model.countDocuments({ project: projectId }),
     ]);
+
+    // Filter out entries with null resource references
+    const data = rawData.filter(item => item.resource);
 
     return {
       data,
@@ -72,7 +78,7 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
     const skip = (page - 1) * limit;
     const sortOrder = order === 'asc' ? 1 : -1;
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find({ resource: resourceId })
         .populate('project', 'project_name')
@@ -81,6 +87,9 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
         .limit(limit),
       this.model.countDocuments({ resource: resourceId }),
     ]);
+
+    // Filter out entries with null project references
+    const data = rawData.filter(item => item.project);
 
     return {
       data,
@@ -92,19 +101,25 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
   }
 
   async findByWeek(weekStartDate: Date): Promise<IProjectWeeklyEffort[]> {
-    return this.model
+    const data = await this.model
       .find({ week_start_date: weekStartDate })
       .populate('project', 'project_name')
       .populate('resource', 'resource_name email');
+    
+    // Filter out entries with null references
+    return data.filter(item => item.project && item.resource);
   }
 
   async findByProjectAndWeek(
     projectId: string | Types.ObjectId,
     weekStartDate: Date
   ): Promise<IProjectWeeklyEffort[]> {
-    return this.model
+    const data = await this.model
       .find({ project: projectId, week_start_date: weekStartDate })
       .populate('resource', 'resource_name email');
+    
+    // Filter out entries with null resource references
+    return data.filter(item => item.resource);
   }
 
   async findByProjectResourceWeek(
@@ -260,11 +275,14 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
   }
 
   async findAllByProject(projectId: string | Types.ObjectId): Promise<IProjectWeeklyEffort[]> {
-    return this.model
+    const data = await this.model
       .find({ project: projectId })
       .populate('resource', 'resource_name email')
       .populate('project', 'project_name')
       .sort({ week_start_date: 1 });
+    
+    // Filter out entries with null references
+    return data.filter(item => item.project && item.resource);
   }
 }
 

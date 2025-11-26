@@ -99,12 +99,14 @@ export function WeeklyEffortsList() {
       // Organize data by project
       const projectsData: ProjectWeekData[] = projects.map((project) => {
         const currentWeekData = currentWeekEfforts.data.filter((e: any) => {
-          const projectId = typeof e.project === 'object' ? e.project._id : e.project;
-          return projectId === project._id || projectId.toString() === project._id.toString();
+          if (!e.project) return false; // Skip if project is null
+          const projectId = typeof e.project === 'object' ? e.project?._id : e.project;
+          return projectId && (projectId === project._id || projectId.toString() === project._id.toString());
         });
         const previousWeekData = previousWeekEfforts.data.filter((e: any) => {
-          const projectId = typeof e.project === 'object' ? e.project._id : e.project;
-          return projectId === project._id || projectId.toString() === project._id.toString();
+          if (!e.project) return false; // Skip if project is null
+          const projectId = typeof e.project === 'object' ? e.project?._id : e.project;
+          return projectId && (projectId === project._id || projectId.toString() === project._id.toString());
         });
 
         return {
@@ -173,7 +175,7 @@ export function WeeklyEffortsList() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between pl-12 lg:pl-0">
+      <div className="flex items-center justify-between pl-16 lg:pl-0">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Weekly Efforts</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -312,7 +314,7 @@ export function WeeklyEffortsList() {
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="font-medium text-gray-900 dark:text-white">
-                                      {typeof entry.resource === 'object' ? entry.resource.resource_name : 'Unknown Resource'}
+                                      {typeof entry.resource === 'object' ? (entry.resource?.resource_name || 'Deleted Resource') : 'Unknown Resource'}
                                     </span>
                                     <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                                       {entry.hours} hours
@@ -342,7 +344,7 @@ export function WeeklyEffortsList() {
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="font-medium text-gray-900 dark:text-white">
-                                      {typeof entry.resource === 'object' ? entry.resource.resource_name : 'Unknown Resource'}
+                                      {typeof entry.resource === 'object' ? (entry.resource?.resource_name || 'Deleted Resource') : 'Unknown Resource'}
                                     </span>
                                     <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                                       {entry.hours} hours

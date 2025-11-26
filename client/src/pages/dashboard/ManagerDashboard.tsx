@@ -69,7 +69,7 @@ export function ManagerDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="pl-12 lg:pl-0">
+      <div className="pl-16 lg:pl-0">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manager Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
           Overview of your projects and team performance

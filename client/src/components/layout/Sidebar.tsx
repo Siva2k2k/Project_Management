@@ -141,7 +141,7 @@ export function Sidebar() {
       >
         <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
           {/* Logo/Header with Collapse Toggle */}
-          <div className="flex items-center h-16 border-b border-gray-200 dark:border-gray-700 px-4">
+          <div className="flex items-center h-16 border-b border-gray-200 dark:border-gray-700 px-4 pl-16 lg:pl-4">
             <div className={`flex items-center justify-between w-full ${isCollapsed ? 'justify-center' : ''}`}>
               {isCollapsed ? (
                 <LogoIcon size={32} className="flex-shrink-0" />

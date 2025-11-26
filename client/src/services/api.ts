@@ -61,7 +61,8 @@ api.interceptors.response.use(
     };
 
     // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't try to refresh if the failed request itself was a refresh attempt
+    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
       if (isRefreshing) {
         // Queue the request while token is being refreshed
         return new Promise((resolve, reject) => {
@@ -96,9 +97,6 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError as Error, null);
         setAccessToken(null);
-
-        // Redirect to login on refresh failure
-        window.location.href = '/login';
 
         return Promise.reject(refreshError);
       } finally {
