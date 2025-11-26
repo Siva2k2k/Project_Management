@@ -133,8 +133,6 @@ export function ManageUsers() {
     fetchUsers();
   };
 
-  const totalPages = Math.ceil(total / limit);
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pl-16 lg:pl-0">

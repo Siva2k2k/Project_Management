@@ -225,7 +225,7 @@ export function CEODashboard() {
               <BarChart
                 data={data.projectsSummary}
                 margin={{ top: 10, right: 20, left: 30, bottom: 70 }}
-                onClick={(chartData) => {
+                onClick={(chartData: any) => {
                   if (chartData && chartData.activePayload && chartData.activePayload[0]) {
                     const projectId = chartData.activePayload[0].payload._id;
                     if (projectId) navigate(`/projects/${projectId}`);
@@ -315,7 +315,7 @@ export function CEODashboard() {
               <BarChart
                 data={data.budgetUtilization}
                 margin={{ top: 10, right: 20, left: 20, bottom: 70 }}
-                onClick={(chartData) => {
+                onClick={(chartData: any) => {
                   if (chartData && chartData.activePayload && chartData.activePayload[0]) {
                     const projectName = chartData.activePayload[0].payload.project;
                     // Find the project by name in projectsSummary to get the ID

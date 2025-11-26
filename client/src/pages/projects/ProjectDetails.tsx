@@ -10,8 +10,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
   XAxis,

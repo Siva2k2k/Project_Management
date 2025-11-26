@@ -3,7 +3,7 @@ import { projectRepository } from '../dbrepo/ProjectRepository';
 import { projectWeeklyEffortRepository } from '../dbrepo/ProjectWeeklyEffortRepository';
 import { projectWeeklyMetricsRepository } from '../dbrepo/ProjectWeeklyMetricsRepository';
 import { NotFoundError } from '../utils/errors';
-import { getDaysAgoUTC, toISODateString, isDateInRange } from '../utils/dateUtils';
+import { getDaysAgoUTC, toISODateString } from '../utils/dateUtils';
 import { ICustomer, IResource, IProject as IProjectDoc, ProjectStatus } from '../types';
 
 // Helper type guards
