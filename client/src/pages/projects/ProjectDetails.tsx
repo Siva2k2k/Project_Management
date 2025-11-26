@@ -130,49 +130,71 @@ export function ProjectDetails() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between pl-16 lg:pl-0">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate('/projects')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {project.project_name}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {project.customer?.customer_name || 'N/A'} • Managed by {project.assigned_manager?.name || 'Unassigned'}
-            </p>
+      <div className="pl-14 sm:pl-20 lg:pl-0">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Left: Back + Title + Meta */}
+          <div className="flex items-start gap-3">
+            {/* Back button: show on large screens on the left, hide on mobile */}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/projects')}
+              className="h-9 px-3 hidden lg:inline-flex"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+                {project.project_name}
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                  {project.customer?.customer_name || 'N/A'} • Managed by {project.assigned_manager?.name || 'Unassigned'}
+                </p>
+                <span
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs md:text-sm font-medium"
+                  style={{
+                    backgroundColor: STATUS_COLORS[project.overall_status] + '20',
+                    color: STATUS_COLORS[project.overall_status],
+                  }}
+                >
+                  {project.overall_status} Status
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <span
-            className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium"
-            style={{
-              backgroundColor: STATUS_COLORS[project.overall_status] + '20',
-              color: STATUS_COLORS[project.overall_status],
-            }}
-          >
-            {project.overall_status} Status
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleEdit}
-            title="Edit Project"
-            className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsDeleteDialogOpen(true)}
-            title="Delete Project"
-            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 mt-2 lg:mt-0">
+            {/* Back button: move to actions on mobile to avoid overlapping hamburger */}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/projects')}
+              className="h-9 px-3 inline-flex lg:hidden"
+              title="Back"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleEdit}
+              title="Edit Project"
+              className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              title="Delete Project"
+              className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
