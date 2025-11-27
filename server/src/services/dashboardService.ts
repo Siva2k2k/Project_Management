@@ -223,28 +223,21 @@ export async function getCEODashboard(): Promise<DashboardData> {
   };
 }
 
-export async function getProjectDrillDown(projectId: string) {
-  const project = await projectRepository.findByIdWithPopulate(projectId);
-  if (!project) {
-    throw new NotFoundError('Project not found');
-  }
-
-  // Get weekly efforts for the project
-  const efforts = await projectWeeklyEffortRepository.findAllByProject(projectId);
-
-  // Effort breakdown by resource - cumulative over time
-  const sortedEfforts = efforts.sort((a, b) => 
-    new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime()
-  );
-
-  // Get unique resources
+// Helper: Extract unique resource names from efforts
+function extractResourceNames(efforts: any[]): Set<string> {
   const resourceNames = new Set<string>();
-  sortedEfforts.forEach((e) => {
+  efforts.forEach((e) => {
     const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
     resourceNames.add(resourceName);
   });
+  return resourceNames;
+}
 
-  // Build cumulative data by week
+// Helper: Build cumulative effort data by week and resource
+function buildCumulativeEffortData(
+  sortedEfforts: any[],
+  resourceNames: Set<string>
+): Map<string, Map<string, number>> {
   const weekMap = new Map<string, Map<string, number>>();
   const cumulativeMap = new Map<string, number>();
   
@@ -255,7 +248,7 @@ export async function getProjectDrillDown(projectId: string) {
     const week = toISODateString(e.week_start_date);
     const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
     
-    // Update cumulative hours for this resource
+    // Update cumulative hours
     const currentCumulative = cumulativeMap.get(resourceName) || 0;
     cumulativeMap.set(resourceName, currentCumulative + e.hours);
     
@@ -267,45 +260,54 @@ export async function getProjectDrillDown(projectId: string) {
     weekData.set(resourceName, cumulativeMap.get(resourceName) || 0);
   });
 
-  // Convert to array format for chart
-  const effortByResource = Array.from(weekMap.entries()).map(([week, resources]) => {
+  return weekMap;
+}
+
+// Helper: Convert week map to chart-friendly format
+function formatEffortByResource(
+  weekMap: Map<string, Map<string, number>>,
+  resourceNames: Set<string>
+): any[] {
+  return Array.from(weekMap.entries()).map(([week, resources]) => {
     const entry: any = { week };
     resourceNames.forEach(resourceName => {
       entry[resourceName] = resources.get(resourceName) || 0;
     });
     return entry;
   });
+}
 
-  // Budget vs actual over time
-  const budgetTrend = efforts
-    .sort((a, b) => new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime())
-    .map((e, index) => {
-      const actualCost = efforts
-        .slice(0, index + 1)
-        .reduce((sum, effort) => sum + effort.hours * 50, 0);
-      return {
-        week: toISODateString(e.week_start_date),
-        estimated: project.estimated_budget,
-        actual: actualCost,
-      };
-    });
+// Helper: Calculate budget trend over time
+function calculateBudgetTrend(efforts: any[], estimatedBudget: number): any[] {
+  const sortedEfforts = [...efforts].sort((a, b) => 
+    new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime()
+  );
 
-  // Scope progress over time - fetch from weekly metrics
-  const weeklyMetrics = await projectWeeklyMetricsRepository.findByProject(projectId, { page: 1, limit: 100, sort: 'week_start_date', order: 'asc' });
-  const scopeTrend = weeklyMetrics.data.map((m) => ({
-    week: toISODateString(m.week_start_date),
-    scope_completed: m.scope_completed || 0,
-  }));
+  return sortedEfforts.map((e, index) => {
+    const actualCost = sortedEfforts
+      .slice(0, index + 1)
+      .reduce((sum, effort) => sum + effort.hours * 50, 0);
+    return {
+      week: toISODateString(e.week_start_date),
+      estimated: estimatedBudget,
+      actual: actualCost,
+    };
+  });
+}
 
-  // Milestone status
-  const milestones = project.milestones.map((m) => ({
+// Helper: Format milestone status
+function formatMilestones(milestones: any[]): any[] {
+  return milestones.map((m) => ({
     description: m.description,
     estimated_date: m.estimated_date,
     completed_date: m.completed_date,
     scope_completed: m.scope_completed,
     status: m.completed_date ? 'Completed' : new Date() > m.estimated_date ? 'Delayed' : 'On Track',
   }));
+}
 
+// Helper: Calculate project statistics
+function calculateProjectStats(efforts: any[], project: any) {
   const totalEffortHours = efforts.reduce((sum, e) => sum + e.hours, 0);
   const actualCost = efforts.reduce((sum, e) => sum + e.hours * 50, 0);
   const effortPercentage = project.estimated_effort > 0 
@@ -314,6 +316,42 @@ export async function getProjectDrillDown(projectId: string) {
   const costPercentage = project.estimated_budget > 0 
     ? Math.round((actualCost / project.estimated_budget) * 100)
     : 0;
+
+  return { totalEffortHours, actualCost, effortPercentage, costPercentage };
+}
+
+export async function getProjectDrillDown(projectId: string) {
+  const project = await projectRepository.findByIdWithPopulate(projectId);
+  if (!project) {
+    throw new NotFoundError('Project not found');
+  }
+
+  const efforts = await projectWeeklyEffortRepository.findAllByProject(projectId);
+  const sortedEfforts = efforts.sort((a, b) => 
+    new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime()
+  );
+
+  // Build effort breakdown by resource
+  const resourceNames = extractResourceNames(sortedEfforts);
+  const weekMap = buildCumulativeEffortData(sortedEfforts, resourceNames);
+  const effortByResource = formatEffortByResource(weekMap, resourceNames);
+
+  // Calculate budget trend
+  const budgetTrend = calculateBudgetTrend(efforts, project.estimated_budget);
+
+  // Fetch scope progress
+  const weeklyMetrics = await projectWeeklyMetricsRepository.findByProject(
+    projectId,
+    { page: 1, limit: 100, sort: 'week_start_date', order: 'asc' }
+  );
+  const scopeTrend = weeklyMetrics.data.map((m) => ({
+    week: toISODateString(m.week_start_date),
+    scope_completed: m.scope_completed || 0,
+  }));
+
+  // Format milestones and calculate stats
+  const milestones = formatMilestones(project.milestones);
+  const stats = calculateProjectStats(efforts, project);
 
   return {
     project: {
@@ -335,30 +373,29 @@ export async function getProjectDrillDown(projectId: string) {
     budgetTrend,
     scopeTrend,
     milestones,
-    totalEffortHours,
-    actualCost,
-    effortPercentage,
-    costPercentage,
+    ...stats,
   };
 }
 
-export async function getKPIs(userId?: string) {
-  const projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
-
-  const totalProjects = projects.length;
-  const completedProjects = projects.filter((p) => p.project_status === ProjectStatus.COMPLETED).length;
-  const onTimeProjects = projects.filter((p) => {
+// Helper: Count on-time completed projects
+function countOnTimeProjects(projects: any[]): number {
+  return projects.filter((p) => {
     if (p.project_status !== ProjectStatus.COMPLETED) return false;
-    const completedMilestones = p.milestones.filter((m) => m.completed_date);
+    
+    const completedMilestones = p.milestones.filter((m: any) => m.completed_date);
     const onTimeMilestones = completedMilestones.filter(
-      (m) => m.completed_date && m.completed_date <= m.estimated_date
+      (m: any) => m.completed_date && m.completed_date <= m.estimated_date
     );
+    
     return onTimeMilestones.length === completedMilestones.length;
   }).length;
+}
 
-  const projectIds = projects.map((p) => p._id.toString());
-  const efforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
-
+// Helper: Calculate budget and effort totals
+function calculateBudgetAndEffortTotals(
+  projects: any[],
+  efforts: any[][]
+): { totalEstimatedBudget: number; totalActualCost: number; totalEstimatedEffort: number; totalActualEffort: number } {
   let totalEstimatedBudget = 0;
   let totalActualCost = 0;
   let totalEstimatedEffort = 0;
@@ -373,30 +410,43 @@ export async function getKPIs(userId?: string) {
     totalActualCost += actualHours * 50;
   });
 
-  const budgetVariance =
-    totalEstimatedBudget > 0
-      ? ((totalActualCost - totalEstimatedBudget) / totalEstimatedBudget) * 100
-      : 0;
+  return { totalEstimatedBudget, totalActualCost, totalEstimatedEffort, totalActualEffort };
+}
 
-  const scheduleVariance =
-    totalEstimatedEffort > 0
-      ? ((totalActualEffort - totalEstimatedEffort) / totalEstimatedEffort) * 100
-      : 0;
+// Helper: Calculate variance percentage
+function calculateVariance(actual: number, estimated: number): number {
+  return estimated > 0 ? ((actual - estimated) / estimated) * 100 : 0;
+}
+
+// Helper: Calculate average resource utilization
+function calculateResourceUtilization(resourceData: any[]): number {
+  if (resourceData.length === 0) return 0;
+  const totalHours = resourceData.reduce((sum, r) => sum + r.total_hours, 0);
+  return totalHours / resourceData.length / 40; // Assuming 40 hours/week
+}
+
+export async function getKPIs(userId?: string) {
+  const projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
+
+  const totalProjects = projects.length;
+  const completedProjects = projects.filter((p) => p.project_status === ProjectStatus.COMPLETED).length;
+  const onTimeProjects = countOnTimeProjects(projects);
+
+  const projectIds = projects.map((p) => p._id.toString());
+  const efforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
+
+  const totals = calculateBudgetAndEffortTotals(projects, efforts);
+  const budgetVariance = calculateVariance(totals.totalActualCost, totals.totalEstimatedBudget);
+  const scheduleVariance = calculateVariance(totals.totalActualEffort, totals.totalEstimatedEffort);
 
   const completionRate = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0;
   const onTimeRate = completedProjects > 0 ? (onTimeProjects / completedProjects) * 100 : 0;
+  const projectHealthScore = projects.length > 0
+    ? (projects.filter((p) => p.overall_status === 'Green').length / projects.length) * 100
+    : 0;
 
-  const projectHealthScore =
-    projects.length > 0
-      ? (projects.filter((p) => p.overall_status === 'Green').length / projects.length) * 100
-      : 0;
-
-  // Resource utilization
   const resourceData = await projectWeeklyEffortRepository.getResourceAllocation(projectIds);
-  const avgUtilization =
-    resourceData.length > 0
-      ? resourceData.reduce((sum, r) => sum + r.total_hours, 0) / resourceData.length / 40
-      : 0; // Assuming 40 hours/week
+  const avgUtilization = calculateResourceUtilization(resourceData);
 
   return {
     totalProjects,

@@ -246,6 +246,42 @@ class UserService {
     }
   }
 
+  // Helper: Process single user import
+  private async importSingleUser(
+    userData: any,
+    adminId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const existingUser = await userRepository.findByEmailWithoutPassword(
+        userData.email.toLowerCase()
+      );
+
+      if (existingUser) {
+        return { success: false, error: `${userData.email}: Email already exists` };
+      }
+
+      const password = userData.password || 
+        `Import${Date.now()}${Math.random().toString(36).slice(-8)}`;
+
+      await userRepository.create({
+        name: userData.name,
+        email: userData.email.toLowerCase(),
+        password,
+        role: (userData.role as UserRole) || UserRole.MANAGER,
+        is_active: true,
+        refresh_tokens: [],
+        last_modified_by: new Types.ObjectId(adminId),
+      } as Partial<IUser>);
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: `${userData.email}: ${(err as Error).message || 'Import failed'}`
+      };
+    }
+  }
+
   async bulkImportUsers(
     data: BulkImportInput,
     adminId: string
@@ -258,39 +294,15 @@ class UserService {
       };
 
       for (const userData of data.users) {
-        try {
-          // Check if user already exists
-          const existingUser = await userRepository.findByEmailWithoutPassword(
-            userData.email.toLowerCase()
-          );
-
-          if (existingUser) {
-            results.failed++;
-            results.errors.push(`${userData.email}: Email already exists`);
-            continue;
-          }
-
-          // Generate random password if not provided
-          const password =
-            userData.password ||
-            `Import${Date.now()}${Math.random().toString(36).slice(-8)}`;
-
-          await userRepository.create({
-            name: userData.name,
-            email: userData.email.toLowerCase(),
-            password,
-            role: (userData.role as UserRole) || UserRole.MANAGER,
-            is_active: true,
-            refresh_tokens: [],
-            last_modified_by: new Types.ObjectId(adminId),
-          } as Partial<IUser>);
-
+        const result = await this.importSingleUser(userData, adminId);
+        
+        if (result.success) {
           results.success++;
-        } catch (err) {
+        } else {
           results.failed++;
-          results.errors.push(
-            `${userData.email}: ${(err as Error).message || 'Import failed'}`
-          );
+          if (result.error) {
+            results.errors.push(result.error);
+          }
         }
       }
 

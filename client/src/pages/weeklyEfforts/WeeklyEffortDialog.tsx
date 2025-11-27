@@ -276,104 +276,140 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     return resourceEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
   };
 
-  // CSV upload handling
-  const handleCsvUpload = async (file: File) => {
-    const text = await file.text();
+  // Helper: Parse CSV file into structured data
+  const parseCsvRows = (text: string): Array<{ email: string; hours: number }> => {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const rows: Array<{ email: string; hours: number }> = [];
-    const unknowns: string[] = [];
 
     for (const line of lines) {
       const parts = line.split(',').map(p => p.trim());
       if (parts.length < 2) continue;
+      
       const email = parts[0].toLowerCase();
       const hours = Number(parts[1]);
-      if (!email || isNaN(hours) || hours <= 0) continue;
-      rows.push({ email, hours });
-    }
-
-    // Build map of current project resources by email
-    const byEmail: Record<string, any> = {};
-    resources.forEach((r: any) => {
-      if (r.email) byEmail[r.email.toLowerCase()] = r;
-    });
-
-    // Track which emails require global search
-    const needSearch: string[] = [];
-    for (const row of rows) {
-      if (!byEmail[row.email]) needSearch.push(row.email);
-    }
-
-    // Search globally for missing emails
-    const foundGlobal: Record<string, any> = {};
-    if (needSearch.length > 0) {
-      // Use resourceService.search per email (to keep payload small)
-      for (const email of needSearch) {
-        try {
-          const res = await resourceService.search(email);
-          const match = (res || []).find((r: any) => r.email && r.email.toLowerCase() === email);
-          if (match) {
-            foundGlobal[email] = match;
-          } else {
-            unknowns.push(email);
-          }
-        } catch (e) {
-          unknowns.push(email);
-        }
+      
+      if (email && !isNaN(hours) && hours > 0) {
+        rows.push({ email, hours });
       }
     }
 
-    // Prepare pending adds list (exclude ones already in project)
-    const adds: any[] = [];
-    Object.keys(foundGlobal).forEach(email => {
-      if (!byEmail[email]) adds.push(foundGlobal[email]);
+    return rows;
+  };
+
+  // Helper: Build email to resource mapping
+  const buildResourceEmailMap = (resourceList: any[]): Record<string, any> => {
+    const byEmail: Record<string, any> = {};
+    resourceList.forEach((r: any) => {
+      if (r.email) {
+        byEmail[r.email.toLowerCase()] = r;
+      }
     });
+    return byEmail;
+  };
+
+  // Helper: Search for resources not in current project
+  const searchMissingResources = async (
+    rows: Array<{ email: string; hours: number }>,
+    byEmail: Record<string, any>
+  ): Promise<{ foundGlobal: Record<string, any>; unknowns: string[] }> => {
+    const needSearch = rows
+      .map(row => row.email)
+      .filter(email => !byEmail[email]);
+
+    const foundGlobal: Record<string, any> = {};
+    const unknowns: string[] = [];
+
+    for (const email of needSearch) {
+      try {
+        const res = await resourceService.search(email);
+        const match = (res || []).find((r: any) => r.email && r.email.toLowerCase() === email);
+        
+        if (match) {
+          foundGlobal[email] = match;
+        } else {
+          unknowns.push(email);
+        }
+      } catch (e) {
+        unknowns.push(email);
+      }
+    }
+
+    return { foundGlobal, unknowns };
+  };
+
+  // CSV upload handling
+  const handleCsvUpload = async (file: File) => {
+    const text = await file.text();
+    const rows = parseCsvRows(text);
+    const byEmail = buildResourceEmailMap(resources);
+    const { foundGlobal, unknowns } = await searchMissingResources(rows, byEmail);
+
+    // Prepare pending adds list (resources found globally but not in project)
+    const adds = Object.values(foundGlobal).filter(
+      resource => !byEmail[resource.email.toLowerCase()]
+    );
 
     setCsvParsedRows(rows);
     setCsvPendingAdds(adds);
     setCsvUnknownEmails(unknowns);
-    setCsvSelectedToAdd(adds.map(() => true)); // default all to checked
+    setCsvSelectedToAdd(adds.map(() => true));
     setCsvReviewOpen(true);
   };
 
-  const applyCsvImport = () => {
-    // Optionally add selected pending resources to project resources list
+  // Helper: Add selected resources from CSV to project resources
+  const addSelectedCsvResources = (): any[] => {
     const newResources = [...resources];
     csvPendingAdds.forEach((r, idx) => {
       if (csvSelectedToAdd[idx]) {
         newResources.push(r);
       }
     });
+    return newResources;
+  };
 
-    // Build map of resource id by email after additions
-    const byEmail: Record<string, any> = {};
-    newResources.forEach((r: any) => {
-      if (r.email) byEmail[r.email.toLowerCase()] = r;
-    });
+  // Helper: Merge CSV hours into resource entries
+  const mergeHoursFromCsv = (
+    byEmail: Record<string, any>,
+    currentEntries: ResourceEffortEntry[]
+  ): ResourceEffortEntry[] => {
+    const updated = [...currentEntries];
 
-    // Merge hours into resourceEntries
-    const updated = [...resourceEntries];
     for (const row of csvParsedRows) {
-      const r = byEmail[row.email];
-      if (!r) continue; // skip unknowns
-      const existingIdx = updated.findIndex(e => e.resource === r._id);
+      const resource = byEmail[row.email];
+      if (!resource) continue;
+
+      const existingIdx = updated.findIndex(e => e.resource === resource._id);
+      
       if (existingIdx >= 0) {
         updated[existingIdx] = {
           ...updated[existingIdx],
           hours: (updated[existingIdx].hours || 0) + row.hours,
         };
       } else {
-        updated.push({ resource: r._id, hours: row.hours });
+        updated.push({ resource: resource._id, hours: row.hours });
       }
     }
 
-    setResources(newResources);
-    setResourceEntries(updated);
+    return updated;
+  };
+
+  // Helper: Clear CSV import state
+  const clearCsvImportState = () => {
     setCsvReviewOpen(false);
     setCsvPendingAdds([]);
     setCsvUnknownEmails([]);
     setCsvParsedRows([]);
     setCsvSelectedToAdd([]);
+  };
+
+  const applyCsvImport = () => {
+    const newResources = addSelectedCsvResources();
+    const byEmail = buildResourceEmailMap(newResources);
+    const updated = mergeHoursFromCsv(byEmail, resourceEntries);
+
+    setResources(newResources);
+    setResourceEntries(updated);
+    clearCsvImportState();
   };
 
   // Filter to allow only Mondays in date picker
@@ -406,12 +442,97 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     return toISODateString(maxDate);
   };
 
+  // Helper: Validate resource entries before submission
+  const validateResourceEntries = (entries: ResourceEffortEntry[]): ResourceEffortEntry[] => {
+    return entries.filter(entry => entry.resource && entry.hours > 0);
+  };
+
+  // Helper: Update or create efforts in edit mode
+  const updateOrCreateEfforts = (
+    validEntries: ResourceEffortEntry[],
+    data: WeeklyEffortFormData
+  ): Promise<any>[] => {
+    return validEntries.map(entry => {
+      const existingEffortId = existingEffortIds.get(entry.resource);
+      
+      if (existingEffortId) {
+        return weeklyEffortService.update(existingEffortId, {
+          hours: entry.hours,
+        });
+      }
+      
+      return weeklyEffortService.create({
+        project: data.project,
+        resource: entry.resource,
+        hours: entry.hours,
+        week_start_date: data.week_start_date,
+        week_end_date: data.week_end_date,
+      });
+    });
+  };
+
+  // Helper: Delete removed efforts in edit mode
+  const deleteRemovedEfforts = (currentResourceIds: Set<string>): Promise<any>[] => {
+    const existingResourceIds = new Set(existingEffortIds.keys());
+    const removedResourceIds = Array.from(existingResourceIds)
+      .filter(resourceId => !currentResourceIds.has(resourceId));
+
+    return removedResourceIds.map(resourceId => {
+      const effortId = existingEffortIds.get(resourceId);
+      return effortId ? weeklyEffortService.delete(effortId) : Promise.resolve();
+    });
+  };
+
+  // Helper: Handle update mode
+  const handleUpdateMode = async (
+    validEntries: ResourceEffortEntry[],
+    data: WeeklyEffortFormData
+  ) => {
+    const currentResourceIds = new Set(validEntries.map(e => e.resource));
+    const effortPromises = updateOrCreateEfforts(validEntries, data);
+    const deletePromises = deleteRemovedEfforts(currentResourceIds);
+
+    await Promise.all([...effortPromises, ...deletePromises]);
+
+    await weeklyMetricsService.update(existingMetricsId!, {
+      rollup_hours: calculateTotalHours(),
+      scope_completed: data.scope_completed,
+      comments: data.comments,
+    });
+  };
+
+  // Helper: Handle create mode
+  const handleCreateMode = async (
+    validEntries: ResourceEffortEntry[],
+    data: WeeklyEffortFormData
+  ) => {
+    const effortPromises = validEntries.map(entry =>
+      weeklyEffortService.create({
+        project: data.project,
+        resource: entry.resource,
+        hours: entry.hours,
+        week_start_date: data.week_start_date,
+        week_end_date: data.week_end_date,
+      })
+    );
+
+    await Promise.all(effortPromises);
+
+    await weeklyMetricsService.create({
+      project: data.project,
+      week_start_date: data.week_start_date,
+      week_end_date: data.week_end_date,
+      rollup_hours: calculateTotalHours(),
+      scope_completed: data.scope_completed,
+      comments: data.comments,
+    });
+  };
+
   const onSubmit = async (data: WeeklyEffortFormData) => {
     try {
       setLoading(true);
 
-      // Validate resource entries
-      const validEntries = resourceEntries.filter(entry => entry.resource && entry.hours > 0);
+      const validEntries = validateResourceEntries(resourceEntries);
       if (validEntries.length === 0) {
         alert('Please add at least one resource with hours');
         setLoading(false);
@@ -419,71 +540,9 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
       }
 
       if (editMode && existingMetricsId) {
-        // Update mode
-        // 1. Handle weekly efforts - update existing, create new, delete removed
-        const currentResourceIds = new Set(validEntries.map(e => e.resource));
-        const existingResourceIds = new Set(existingEffortIds.keys());
-
-        // Update or create efforts
-        const effortPromises = validEntries.map(entry => {
-          const existingEffortId = existingEffortIds.get(entry.resource);
-          if (existingEffortId) {
-            // Update existing effort
-            return weeklyEffortService.update(existingEffortId, {
-              hours: entry.hours,
-            });
-          } else {
-            // Create new effort
-            return weeklyEffortService.create({
-              project: data.project,
-              resource: entry.resource,
-              hours: entry.hours,
-              week_start_date: data.week_start_date,
-              week_end_date: data.week_end_date,
-            });
-          }
-        });
-
-        // Delete removed efforts
-        const deletePromises = Array.from(existingResourceIds)
-          .filter(resourceId => !currentResourceIds.has(resourceId))
-          .map(resourceId => {
-            const effortId = existingEffortIds.get(resourceId);
-            return effortId ? weeklyEffortService.delete(effortId) : Promise.resolve();
-          });
-
-        await Promise.all([...effortPromises, ...deletePromises]);
-
-        // 2. Update weekly metrics
-        await weeklyMetricsService.update(existingMetricsId, {
-          rollup_hours: calculateTotalHours(),
-          scope_completed: data.scope_completed,
-          comments: data.comments,
-        });
+        await handleUpdateMode(validEntries, data);
       } else {
-        // Create mode
-        // Create weekly efforts for each resource
-        const effortPromises = validEntries.map(entry =>
-          weeklyEffortService.create({
-            project: data.project,
-            resource: entry.resource,
-            hours: entry.hours,
-            week_start_date: data.week_start_date,
-            week_end_date: data.week_end_date,
-          })
-        );
-
-        await Promise.all(effortPromises);
-
-        // Create weekly metrics entry
-        await weeklyMetricsService.create({
-          project: data.project,
-          week_start_date: data.week_start_date,
-          week_end_date: data.week_end_date,
-          rollup_hours: calculateTotalHours(),
-          scope_completed: data.scope_completed,
-          comments: data.comments,
-        });
+        await handleCreateMode(validEntries, data);
       }
 
       onSuccess();

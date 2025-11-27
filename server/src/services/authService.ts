@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { userRepository } from '../dbrepo';
+import { Types } from 'mongoose';
 import { generateTokenPair, verifyToken } from '../utils/jwt';
 import {
   AuthError,
@@ -81,49 +82,57 @@ class AuthService {
     }
   }
 
+  // Helper: Validate user account status
+  private validateUserAccount(user: IUser | null): IUser {
+    if (!user) {
+      throw new AuthError('Invalid email or password');
+    }
+
+    if (!user.is_active) {
+      throw new AuthError('Account is deactivated');
+    }
+
+    if (user.is_deleted) {
+      throw new AuthError('Account has been deleted');
+    }
+
+    return user;
+  }
+
+  // Helper: Verify user password
+  private async verifyPassword(user: IUser, password: string): Promise<void> {
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      throw new AuthError('Invalid email or password');
+    }
+  }
+
+  // Helper: Generate and save tokens for user
+  private async generateAndSaveTokens(user: IUser): Promise<{ accessToken: string; refreshToken: string }> {
+    const { accessToken, refreshToken, refreshExpires } = generateTokenPair(
+      user._id,
+      user.email,
+      user.role
+    );
+
+    await userRepository.updateRefreshToken(user._id, refreshToken, refreshExpires);
+    await userRepository.cleanExpiredTokens(user._id);
+
+    return { accessToken, refreshToken };
+  }
+
   async login(data: LoginInput): Promise<AuthResponse> {
     try {
-      // Find user with password
       const user = await userRepository.findByEmail(data.email);
+      this.validateUserAccount(user);
+      await this.verifyPassword(user!, data.password);
 
-      if (!user) {
-        throw new AuthError('Invalid email or password');
-      }
-
-      if (!user.is_active) {
-        throw new AuthError('Account is deactivated');
-      }
-
-      if (user.is_deleted) {
-        throw new AuthError('Account has been deleted');
-      }
-
-      // Compare password
-      const isPasswordValid = await user.comparePassword(data.password);
-
-      if (!isPasswordValid) {
-        throw new AuthError('Invalid email or password');
-      }
-
-      // Generate tokens
-      const { accessToken, refreshToken, refreshExpires } = generateTokenPair(
-        user._id,
-        user.email,
-        user.role
-      );
-
-      // Save refresh token
-      await userRepository.updateRefreshToken(user._id, refreshToken, refreshExpires);
-
-      // Clean expired tokens
-      await userRepository.cleanExpiredTokens(user._id);
-
-      logger.info(`User logged in: ${user.email}`);
+      const tokens = await this.generateAndSaveTokens(user!);
+      logger.info(`User logged in: ${user!.email}`);
 
       return {
-        user: this.sanitizeUser(user),
-        accessToken,
-        refreshToken,
+        user: this.sanitizeUser(user!),
+        ...tokens,
       };
     } catch (error) {
       if (error instanceof AuthError) {
@@ -134,50 +143,44 @@ class AuthService {
     }
   }
 
+  // Helper: Validate refresh token for user
+  private validateRefreshToken(user: IUser, refreshToken: string): void {
+    const tokenExists = user.refresh_tokens.some(
+      (t) => t.token === refreshToken && t.expires > new Date()
+    );
+
+    if (!tokenExists) {
+      throw new AuthError('Invalid or expired refresh token');
+    }
+  }
+
+  // Helper: Rotate refresh tokens
+  private async rotateRefreshTokens(
+    userId: Types.ObjectId,
+    oldToken: string,
+    email: string,
+    role: string
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    await userRepository.removeRefreshToken(userId, oldToken);
+    const tokens = generateTokenPair(userId, email, role);
+    await userRepository.updateRefreshToken(userId, tokens.refreshToken, tokens.refreshExpires);
+    return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+  }
+
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
-      // Verify the refresh token
       const decoded = verifyToken(refreshToken);
-
-      // Find user
       const user = await userRepository.findById(decoded.userId);
 
-      if (!user) {
-        throw new AuthError('User not found');
-      }
-
-      if (!user.is_active || user.is_deleted) {
+      if (!user || !user.is_active || user.is_deleted) {
         throw new AuthError('Account is not active');
       }
 
-      // Check if refresh token exists in user's tokens
-      const tokenExists = user.refresh_tokens.some(
-        (t) => t.token === refreshToken && t.expires > new Date()
-      );
-
-      if (!tokenExists) {
-        throw new AuthError('Invalid or expired refresh token');
-      }
-
-      // Remove old refresh token
-      await userRepository.removeRefreshToken(user._id, refreshToken);
-
-      // Generate new tokens
-      const tokens = generateTokenPair(user._id, user.email, user.role);
-
-      // Save new refresh token
-      await userRepository.updateRefreshToken(
-        user._id,
-        tokens.refreshToken,
-        tokens.refreshExpires
-      );
-
+      this.validateRefreshToken(user, refreshToken);
+      const tokens = await this.rotateRefreshTokens(user._id, refreshToken, user.email, user.role);
+      
       logger.info(`Token refreshed for user: ${user.email}`);
-
-      return {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      };
+      return tokens;
     } catch (error) {
       if (error instanceof AuthError) {
         throw error;

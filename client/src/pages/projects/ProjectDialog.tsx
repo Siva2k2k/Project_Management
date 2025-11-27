@@ -129,41 +129,48 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
     }
   };
 
+  // Helper: Cache new resources without duplicates
+  const cacheResources = (newResults: any[]) => {
+    setResources(prev => {
+      const newResources = [...prev];
+      newResults.forEach((r: any) => {
+        if (!newResources.find(existing => existing._id === r._id)) {
+          newResources.push(r);
+        }
+      });
+      return newResources;
+    });
+  };
+
+  // Helper: Perform resource search
+  const searchResources = async (query: string) => {
+    try {
+      setSearching(true);
+      const result = await resourceService.search(query);
+      setOptions(result);
+      cacheResources(result);
+    } catch (err) {
+      console.error('Search resources failed:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setQuery(q);
     
-    // If query is empty or too short, load active resources as default
     if (q.trim().length === 0) {
       setOptions([]);
       return;
     }
     
     if (q.trim().length < 2) {
-      // Show existing resources if available
       setOptions(resources);
       return;
     }
     
-    try {
-      setSearching(true);
-      const result = await resourceService.search(q.trim());
-      setOptions(result);
-      // Cache fetched resources for reuse
-      setResources(prev => {
-        const newResources = [...prev];
-        result.forEach((r: any) => {
-          if (!newResources.find(existing => existing._id === r._id)) {
-            newResources.push(r);
-          }
-        });
-        return newResources;
-      });
-    } catch (err) {
-      console.error('Search resources failed:', err);
-    } finally {
-      setSearching(false);
-    }
+    await searchResources(q.trim());
   };
 
   const addResource = (id: string) => {
@@ -174,40 +181,48 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
     setSelectedResources(prev => prev.filter(rid => rid !== id));
   };
 
+  // Helper: Clean up form data before submission
+  const prepareSubmissionData = (data: CreateProjectInput) => {
+    return {
+      ...data,
+      resources: selectedResources,
+      hourly_rate: (!data.hourly_rate || isNaN(data.hourly_rate as number)) ? undefined : data.hourly_rate,
+    };
+  };
+
+  // Helper: Format error message for display
+  const formatErrorMessage = (error: any): string => {
+    if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+      return error.response.data.errors
+        .map((e: any) => `${e.field || 'Unknown'}: ${e.message}`)
+        .join('\n');
+    }
+    
+    if (error.response?.data?.message) {
+      return error.response.data.message;
+    }
+    
+    return 'Failed to save project';
+  };
+
   const onSubmit = async (data: CreateProjectInput) => {
     try {
       setLoading(true);
-      
-      // Clean up the data - remove NaN values and add resources
-      const cleanedData = {
-        ...data,
-        resources: selectedResources,
-        hourly_rate: (!data.hourly_rate || isNaN(data.hourly_rate as number)) ? undefined : data.hourly_rate,
-      };
+      const cleanedData = prepareSubmissionData(data);
       
       console.log('Submitting project data:', cleanedData);
+      
       if (project) {
         await projectService.update(project._id, cleanedData);
       } else {
         await projectService.create(cleanedData);
       }
+      
       onSuccess();
     } catch (error: any) {
       console.error('Failed to save project:', error);
       console.error('Error response:', error.response?.data);
-      
-      let errorMessage = 'Failed to save project';
-      
-      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-        console.log('Validation errors:', error.response.data.errors);
-        errorMessage = error.response.data.errors
-          .map((e: any) => `${e.field || 'Unknown'}: ${e.message}`)
-          .join('\n');
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-      
-      alert(errorMessage);
+      alert(formatErrorMessage(error));
     } finally {
       setLoading(false);
     }
