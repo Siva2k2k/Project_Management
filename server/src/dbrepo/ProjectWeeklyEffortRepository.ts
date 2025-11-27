@@ -277,7 +277,7 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
   async findAllByProject(projectId: string | Types.ObjectId): Promise<IProjectWeeklyEffort[]> {
     const data = await this.model
       .find({ project: projectId })
-      .populate('resource', 'resource_name email')
+      .populate('resource', 'resource_name email per_hour_rate')
       .populate('project', 'project_name')
       .sort({ week_start_date: 1 });
     

@@ -4,7 +4,8 @@ import { projectWeeklyEffortRepository } from '../dbrepo/ProjectWeeklyEffortRepo
 import { projectWeeklyMetricsRepository } from '../dbrepo/ProjectWeeklyMetricsRepository';
 import { NotFoundError } from '../utils/errors';
 import { getDaysAgoUTC, toISODateString } from '../utils/dateUtils';
-import { ICustomer, IResource, IProject as IProjectDoc, ProjectStatus } from '../types';
+import { ICustomer, IResource, IProject as IProjectDoc, ProjectStatus, HourlyRateSource } from '../types';
+import { config } from '../config';
 
 // Helper type guards
 function isPopulatedCustomer(customer: Types.ObjectId | ICustomer): customer is ICustomer {
@@ -17,6 +18,31 @@ function isPopulatedResource(resource: Types.ObjectId | IResource): resource is 
 
 function isPopulatedProject(project: Types.ObjectId | IProjectDoc): project is IProjectDoc {
   return typeof project === 'object' && 'project_name' in project;
+}
+
+// Helper: Get hourly rate based on project configuration
+function getHourlyRate(project: IProjectDoc, resource?: IResource): number {
+  switch (project.hourly_rate_source) {
+    case HourlyRateSource.PROJECT:
+      return project.hourly_rate || config.organizationalHourlyRate;
+    case HourlyRateSource.RESOURCE:
+      return resource?.per_hour_rate || config.organizationalHourlyRate;
+    case HourlyRateSource.ORGANIZATION:
+    default:
+      return config.organizationalHourlyRate;
+  }
+}
+
+
+// Helper: Calculate actual cost for efforts with proper hourly rate
+async function calculateActualCost(efforts: any[], project: IProjectDoc): Promise<number> {
+  let totalCost = 0;
+  for (const effort of efforts) {
+    const resource = isPopulatedResource(effort.resource) ? effort.resource : undefined;
+    const hourlyRate = getHourlyRate(project, resource);
+    totalCost += effort.hours * hourlyRate;
+  }
+  return totalCost;
 }
 
 interface ProjectSummary {
@@ -101,11 +127,11 @@ export async function getManagerDashboard(userId: string): Promise<DashboardData
   const budgetUtilization = await Promise.all(
     projects.slice(0, 10).map(async (p) => {
       const efforts = await projectWeeklyEffortRepository.findAllByProject(p._id.toString());
-      const actualHours = efforts.reduce((sum, e) => sum + e.hours, 0);
+      const actualCost = await calculateActualCost(efforts, p);
       return {
         project: p.project_name,
         estimated: p.estimated_budget,
-        actual: actualHours * 50, // Assuming average rate of $50/hour
+        actual: actualCost,
       };
     })
   );
@@ -188,11 +214,11 @@ export async function getCEODashboard(): Promise<DashboardData> {
   const budgetUtilization = await Promise.all(
     projects.slice(0, 10).map(async (p) => {
       const efforts = await projectWeeklyEffortRepository.findAllByProject(p._id.toString());
-      const actualHours = efforts.reduce((sum, e) => sum + e.hours, 0);
+      const actualCost = await calculateActualCost(efforts, p);
       return {
         project: p.project_name,
         estimated: p.estimated_budget,
-        actual: actualHours * 50,
+        actual: actualCost,
       };
     })
   );
@@ -278,19 +304,20 @@ function formatEffortByResource(
 }
 
 // Helper: Calculate budget trend over time
-function calculateBudgetTrend(efforts: any[], estimatedBudget: number): any[] {
+function calculateBudgetTrend(efforts: any[], estimatedBudget: number, project: IProjectDoc): any[] {
   const sortedEfforts = [...efforts].sort((a, b) => 
     new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime()
   );
 
-  return sortedEfforts.map((e, index) => {
-    const actualCost = sortedEfforts
-      .slice(0, index + 1)
-      .reduce((sum, effort) => sum + effort.hours * 50, 0);
+  let cumulativeCost = 0;
+  return sortedEfforts.map((e) => {
+    const resource = isPopulatedResource(e.resource) ? e.resource : undefined;
+    const hourlyRate = getHourlyRate(project, resource);
+    cumulativeCost += e.hours * hourlyRate;
     return {
       week: toISODateString(e.week_start_date),
       estimated: estimatedBudget,
-      actual: actualCost,
+      actual: cumulativeCost,
     };
   });
 }
@@ -307,9 +334,9 @@ function formatMilestones(milestones: any[]): any[] {
 }
 
 // Helper: Calculate project statistics
-function calculateProjectStats(efforts: any[], project: any) {
+async function calculateProjectStats(efforts: any[], project: IProjectDoc) {
   const totalEffortHours = efforts.reduce((sum, e) => sum + e.hours, 0);
-  const actualCost = efforts.reduce((sum, e) => sum + e.hours * 50, 0);
+  const actualCost = await calculateActualCost(efforts, project);
   const effortPercentage = project.estimated_effort > 0 
     ? Math.round((totalEffortHours / project.estimated_effort) * 100)
     : 0;
@@ -337,7 +364,7 @@ export async function getProjectDrillDown(projectId: string) {
   const effortByResource = formatEffortByResource(weekMap, resourceNames);
 
   // Calculate budget trend
-  const budgetTrend = calculateBudgetTrend(efforts, project.estimated_budget);
+  const budgetTrend = calculateBudgetTrend(efforts, project.estimated_budget, project);
 
   // Fetch scope progress
   const weeklyMetrics = await projectWeeklyMetricsRepository.findByProject(
@@ -351,7 +378,7 @@ export async function getProjectDrillDown(projectId: string) {
 
   // Format milestones and calculate stats
   const milestones = formatMilestones(project.milestones);
-  const stats = calculateProjectStats(efforts, project);
+  const stats = await calculateProjectStats(efforts, project);
 
   return {
     project: {
@@ -392,23 +419,25 @@ function countOnTimeProjects(projects: any[]): number {
 }
 
 // Helper: Calculate budget and effort totals
-function calculateBudgetAndEffortTotals(
-  projects: any[],
+async function calculateBudgetAndEffortTotals(
+  projects: IProjectDoc[],
   efforts: any[][]
-): { totalEstimatedBudget: number; totalActualCost: number; totalEstimatedEffort: number; totalActualEffort: number } {
+): Promise<{ totalEstimatedBudget: number; totalActualCost: number; totalEstimatedEffort: number; totalActualEffort: number }> {
   let totalEstimatedBudget = 0;
   let totalActualCost = 0;
   let totalEstimatedEffort = 0;
   let totalActualEffort = 0;
 
-  projects.forEach((p, index) => {
+  for (let i = 0; i < projects.length; i++) {
+    const p = projects[i];
     totalEstimatedBudget += p.estimated_budget;
     totalEstimatedEffort += p.estimated_effort;
-    const projectEfforts = efforts[index];
+    const projectEfforts = efforts[i];
     const actualHours = projectEfforts.reduce((sum, e) => sum + e.hours, 0);
     totalActualEffort += actualHours;
-    totalActualCost += actualHours * 50;
-  });
+    const cost = await calculateActualCost(projectEfforts, p);
+    totalActualCost += cost;
+  }
 
   return { totalEstimatedBudget, totalActualCost, totalEstimatedEffort, totalActualEffort };
 }
@@ -435,7 +464,7 @@ export async function getKPIs(userId?: string) {
   const projectIds = projects.map((p) => p._id.toString());
   const efforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
 
-  const totals = calculateBudgetAndEffortTotals(projects, efforts);
+  const totals = await calculateBudgetAndEffortTotals(projects, efforts);
   const budgetVariance = calculateVariance(totals.totalActualCost, totals.totalEstimatedBudget);
   const scheduleVariance = calculateVariance(totals.totalActualEffort, totals.totalEstimatedEffort);
 
@@ -483,7 +512,10 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
     hours: e.total_hours,
   }));
 
-  // Budget burn-down
+  // Budget burn-down - fetch projects to get hourly rate configuration
+  const projectsData = await Promise.all(projectIds.map((id) => projectRepository.findByIdWithPopulate(id)));
+  const projectsMap = new Map(projectsData.filter(p => p).map(p => [p!._id.toString(), p!]));
+  
   const efforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
   const allEfforts = efforts.flat().filter((e) => new Date(e.week_start_date) >= startDate);
 
@@ -491,7 +523,13 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
 
   let cumulativeCost = 0;
   const budgetTrend = allEfforts.map((e) => {
-    cumulativeCost += e.hours * 50;
+    const effortProject = isPopulatedProject(e.project) ? e.project : undefined;
+    const projectDoc = effortProject ? projectsMap.get(effortProject._id.toString()) : undefined;
+    if (projectDoc) {
+      const resource = isPopulatedResource(e.resource) ? e.resource : undefined;
+      const hourlyRate = getHourlyRate(projectDoc, resource);
+      cumulativeCost += e.hours * hourlyRate;
+    }
     return {
       date: toISODateString(e.week_start_date),
       cost: cumulativeCost,
