@@ -281,7 +281,6 @@ class UserService {
             password,
             role: (userData.role as UserRole) || UserRole.MANAGER,
             is_active: true,
-            refresh_tokens: [],
             last_modified_by: new Types.ObjectId(adminId),
           } as Partial<IUser>);
 
@@ -353,7 +352,6 @@ class UserService {
         role: data.role as UserRole,
         is_active: true,
         email_verified: true,
-        refresh_tokens: [],
         last_modified_by: new Types.ObjectId(adminId),
       } as Partial<IUser>);
 

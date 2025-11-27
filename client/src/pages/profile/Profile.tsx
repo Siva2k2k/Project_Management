@@ -11,7 +11,6 @@ const profileSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name cannot exceed 100 characters'),
-  email: z.string().email('Invalid email address'),
 });
 
 const passwordSchema = z
@@ -35,7 +34,7 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export const Profile: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -49,7 +48,6 @@ export const Profile: React.FC = () => {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user?.name || '',
-      email: user?.email || '',
     },
   });
 
@@ -65,7 +63,11 @@ export const Profile: React.FC = () => {
   const onProfileSubmit = async (data: ProfileFormData) => {
     try {
       setProfileMessage(null);
-      await userService.updateProfile(data);
+      const updatedUser = await userService.updateProfile(data);
+      // Update user state immediately to reflect changes without refresh
+      if (user) {
+        setUser({ ...user, ...updatedUser });
+      }
       setProfileMessage({ type: 'success', text: 'Profile updated successfully' });
       setIsEditingProfile(false);
     } catch (err) {
@@ -160,13 +162,24 @@ export const Profile: React.FC = () => {
                   Email
                 </label>
                 <input
-                  {...registerProfile('email')}
                   type="email"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  value={user?.email || ''}
+                  disabled
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-700 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60"
                 />
-                {profileErrors.email && (
-                  <p className="text-red-500 text-xs mt-1">{profileErrors.email.message}</p>
-                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email cannot be changed</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Role
+                </label>
+                <input
+                  type="text"
+                  value={user?.role || ''}
+                  disabled
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-700 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60"
+                />
               </div>
 
               <div className="flex space-x-3">

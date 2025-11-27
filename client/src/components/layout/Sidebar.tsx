@@ -107,6 +107,11 @@ export function Sidebar() {
     setIsCollapsed(!isCollapsed);
   };
 
+  // Determine if we should show the collapsed view
+  // On mobile (isOpen is true), we always want to show the full menu regardless of isCollapsed state
+  // On desktop (isOpen is false), we respect the isCollapsed state
+  const showCollapsed = isCollapsed && !isOpen;
+
   return (
     <>
       {/* Mobile hamburger button */}
@@ -136,59 +141,28 @@ export function Sidebar() {
           fixed top-0 left-0 z-40 h-screen transition-all duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:relative lg:flex-shrink-0
-          ${isCollapsed ? 'lg:w-20 w-64' : 'w-64'}
+          ${showCollapsed ? 'lg:w-20 w-64' : 'w-64'}
         `}
       >
-        <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-x-hidden relative">
           {/* Logo/Header with Collapse Toggle */}
-          <div className="flex items-center h-16 border-b border-gray-200 dark:border-gray-700 px-4 pl-16 lg:pl-4">
-            <div className={`flex items-center justify-between w-full ${isCollapsed ? 'justify-center' : ''}`}>
-              {isCollapsed ? (
-                <LogoIcon size={32} className="flex-shrink-0" />
-              ) : (
-                <div className="flex-1">
-                  <Logo size="sm" showText={true} />
-                </div>
-              )}
-              {/* Desktop Collapse Toggle Button */}
-              <button
-                onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex-shrink-0 ml-2"
-                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-                ) : (
-                  <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-                )}
-              </button>
-            </div>
+          <div className={`flex items-center h-16 border-b border-gray-200 dark:border-gray-700 transition-all duration-300 ${showCollapsed ? 'justify-center px-2' : 'px-6'}`}>
+            {showCollapsed ? (
+              <LogoIcon size={32} className="flex-shrink-0" />
+            ) : (
+              <div className="flex-1 min-w-0">
+                <Logo size="sm" showText={true} />
+              </div>
+            )}
           </div>
 
-          {/* User info */}
-          {user && (
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                {!isCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {user.name}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {user.role}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Desktop Collapse Toggle Button - Floating on border */}
+          {/* Removed floating button */}
+
+          {/* User info removed from here */}
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3">
             <ul className="space-y-1">
               {menuItems.map((item) => {
                 // Filter menu items based on user role if needed
@@ -204,22 +178,22 @@ export function Sidebar() {
                       to={item.path}
                       onClick={closeSidebar}
                       className={`
-                        flex items-center px-4 py-3 rounded-lg transition-colors group relative
-                        ${isCollapsed ? 'justify-center' : 'space-x-3'}
+                        flex items-center px-3 py-2.5 rounded-lg transition-colors group relative
+                        ${showCollapsed ? 'justify-center' : 'space-x-3'}
                         ${
                           isActive
                             ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }
                       `}
-                      title={isCollapsed ? item.name : ''}
+                      title={showCollapsed ? item.name : ''}
                     >
                       <span className="flex-shrink-0">{item.icon}</span>
-                      {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
+                      {!showCollapsed && <span className="text-sm font-medium truncate">{item.name}</span>}
 
                       {/* Tooltip for collapsed state */}
-                      {isCollapsed && (
-                        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                      {showCollapsed && (
+                        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
                           {item.name}
                         </div>
                       )}
@@ -230,30 +204,59 @@ export function Sidebar() {
             </ul>
           </nav>
 
-          {/* Theme toggle and Logout button */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-            {/* Theme Toggle */}
-            <div className={`flex items-center px-4 py-2 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-              {!isCollapsed && <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>}
-              <ThemeToggle />
-            </div>
-
-            {/* Logout Button */}
+          {/* Bottom Section: User Info & Actions */}
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            {/* Collapse Toggle Button */}
             <button
-              onClick={handleLogout}
-              className={`flex items-center px-4 py-3 w-full rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group relative ${isCollapsed ? 'justify-center' : 'space-x-3'}`}
-              title={isCollapsed ? 'Logout' : ''}
+              onClick={toggleCollapse}
+              className={`hidden lg:flex items-center w-full p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700/50 text-gray-500 dark:text-gray-400 ${showCollapsed ? 'justify-center' : 'justify-end px-4'}`}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <span className="flex-shrink-0"><LogOut className="w-5 h-5" /></span>
-              {!isCollapsed && <span className="text-sm font-medium">Logout</span>}
-
-              {/* Tooltip for collapsed state */}
-              {isCollapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  Logout
+              {showCollapsed ? (
+                <ChevronRight className="w-5 h-5" />
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-medium uppercase tracking-wider">Collapse</span>
+                  <ChevronLeft className="w-5 h-5" />
                 </div>
               )}
             </button>
+
+            <div className={`p-4 flex items-center ${showCollapsed ? 'flex-col space-y-4' : 'justify-between'}`}>
+              
+              {/* User Profile */}
+              {user && (
+                <div className={`flex items-center ${showCollapsed ? 'justify-center' : 'space-x-3 overflow-hidden'}`}>
+                  <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-sm">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  {!showCollapsed && (
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]">
+                        {user.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
+                        {user.role}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions: Theme & Logout */}
+              <div className={`flex items-center ${showCollapsed ? 'flex-col space-y-2' : 'space-x-1'}`}>
+                <ThemeToggle />
+                
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </aside>

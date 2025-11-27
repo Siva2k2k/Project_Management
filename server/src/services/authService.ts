@@ -47,7 +47,6 @@ class AuthService {
         email_verified: false,
         verification_token: verificationToken,
         verification_token_expires: verificationTokenExpires,
-        refresh_tokens: [],
       } as Partial<IUser>);
 
       // Send verification email (async, don't wait)
@@ -150,17 +149,17 @@ class AuthService {
         throw new AuthError('Account is not active');
       }
 
-      // Check if refresh token exists in user's tokens
-      const tokenExists = user.refresh_tokens.some(
-        (t) => t.token === refreshToken && t.expires > new Date()
-      );
+      // Check if refresh token exists and is valid
+      const tokenExists = user.refresh_token &&
+        user.refresh_token.token === refreshToken &&
+        user.refresh_token.expires > new Date();
 
       if (!tokenExists) {
         throw new AuthError('Invalid or expired refresh token');
       }
 
       // Remove old refresh token
-      await userRepository.removeRefreshToken(user._id, refreshToken);
+      await userRepository.removeRefreshToken(user._id);
 
       // Generate new tokens
       const tokens = generateTokenPair(user._id, user.email, user.role);
@@ -187,15 +186,10 @@ class AuthService {
     }
   }
 
-  async logout(userId: string, refreshToken?: string): Promise<void> {
+  async logout(userId: string): Promise<void> {
     try {
-      if (refreshToken) {
-        // Remove specific refresh token
-        await userRepository.removeRefreshToken(userId, refreshToken);
-      } else {
-        // Remove all refresh tokens (logout from all devices)
-        await userRepository.removeAllRefreshTokens(userId);
-      }
+      // Remove the user's refresh token
+      await userRepository.removeRefreshToken(userId);
 
       logger.info(`User logged out: ${userId}`);
     } catch (error) {

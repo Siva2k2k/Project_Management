@@ -71,7 +71,7 @@ export interface IUser extends Document {
   verification_token_expires?: Date;
   password_reset_token?: string;
   password_reset_expires?: Date;
-  refresh_tokens: IRefreshToken[];
+  refresh_token?: IRefreshToken;
   last_modified_date: Date;
   last_modified_by?: Types.ObjectId;
   is_deleted: boolean;
