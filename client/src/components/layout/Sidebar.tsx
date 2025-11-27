@@ -117,14 +117,10 @@ export function Sidebar() {
       {/* Mobile hamburger button */}
       <button
         onClick={toggleSidebar}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-md"
+        className={`lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-md ${isOpen ? 'hidden' : 'block'}`}
         aria-label="Toggle menu"
       >
-        {isOpen ? (
-          <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-        ) : (
-          <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-        )}
+        <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />
       </button>
 
       {/* Overlay for mobile */}
@@ -150,8 +146,16 @@ export function Sidebar() {
             {showCollapsed ? (
               <LogoIcon size={32} className="flex-shrink-0" />
             ) : (
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 flex items-center justify-between">
                 <Logo size="sm" showText={true} />
+                {/* Mobile Close Button */}
+                <button
+                  onClick={closeSidebar}
+                  className="lg:hidden p-1 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  aria-label="Close sidebar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             )}
           </div>
@@ -206,23 +210,6 @@ export function Sidebar() {
 
           {/* Bottom Section: User Info & Actions */}
           <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-            {/* Collapse Toggle Button */}
-            <button
-              onClick={toggleCollapse}
-              className={`hidden lg:flex items-center w-full p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700/50 text-gray-500 dark:text-gray-400 ${showCollapsed ? 'justify-center' : 'justify-end px-4'}`}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {showCollapsed ? (
-                <ChevronRight className="w-5 h-5" />
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-medium uppercase tracking-wider">Collapse</span>
-                  <ChevronLeft className="w-5 h-5" />
-                </div>
-              )}
-            </button>
-
             <div className={`p-4 flex items-center ${showCollapsed ? 'flex-col space-y-4' : 'justify-between'}`}>
               
               {/* User Profile */}
@@ -259,6 +246,19 @@ export function Sidebar() {
             </div>
           </div>
         </div>
+
+        {/* Desktop Collapse Toggle Button */}
+        <button
+          onClick={toggleCollapse}
+          className="hidden lg:flex absolute top-6 -right-3 z-50 items-center justify-center w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {showCollapsed ? (
+            <ChevronRight className="w-3 h-3" />
+          ) : (
+            <ChevronLeft className="w-3 h-3" />
+          )}
+        </button>
       </aside>
     </>
   );

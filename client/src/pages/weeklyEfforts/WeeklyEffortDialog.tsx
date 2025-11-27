@@ -197,31 +197,36 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     try {
       setLoading(true);
 
-      // Fetch weekly metrics for this project and week
-      const metricsResponse = await weeklyMetricsService.getAll({
-        project: projectId,
-        week_start_date: weekStartDate,
-        limit: 1,
-      });
-
-      // Fetch weekly efforts for this project and week
-      const effortsResponse = await weeklyEffortService.getAll({
-        project: projectId,
-        week_start_date: weekStartDate,
-        limit: 100,
-      });
+      // Fetch all data in parallel
+      const [projectResponse, metricsResponse, effortsResponse] = await Promise.all([
+        projectService.getById(projectId),
+        weeklyMetricsService.getAll({
+          project: projectId,
+          week_start_date: weekStartDate,
+          limit: 1,
+        }),
+        weeklyEffortService.getAll({
+          project: projectId,
+          week_start_date: weekStartDate,
+          limit: 100,
+        }),
+      ]);
 
       const metrics = metricsResponse.data[0];
       const efforts = effortsResponse.data;
 
+      // Load project resources for the dropdown
+      const projectResources = projectResponse?.resources || [];
+      setResources(projectResources);
+
       if (metrics) {
         setExistingMetricsId(metrics._id);
-        
+
         // Check if this is the current week
         const currentWeek = getCurrentWeekRange();
         const isEditingCurrentWeek = metrics.week_start_date.split('T')[0] === currentWeek.start;
         setIsCurrentWeek(isEditingCurrentWeek);
-        
+
         reset({
           project: projectId,
           week_start_date: formatDateForInput(metrics.week_start_date),
@@ -234,9 +239,13 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
       if (efforts && efforts.length > 0) {
         const effortMap = new Map<string, string>();
         const entries = efforts.map((effort: any) => {
-          effortMap.set(effort.resource._id || effort.resource, effort._id);
+          // Handle both populated and non-populated resource fields
+          const resourceId = typeof effort.resource === 'object'
+            ? effort.resource._id
+            : effort.resource;
+          effortMap.set(resourceId, effort._id);
           return {
-            resource: effort.resource._id || effort.resource,
+            resource: resourceId,
             hours: effort.hours,
           };
         });
@@ -245,6 +254,16 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
       } else {
         setResourceEntries([{ resource: '', hours: 0 }]);
       }
+
+      console.log('Edit mode loaded:', {
+        projectResources: projectResources.length,
+        efforts: efforts?.length || 0,
+        resourceEntries: efforts?.map((e) => ({
+          resourceId: typeof e.resource === 'object' ? e.resource._id : e.resource,
+          resourceName: typeof e.resource === 'object' ? e.resource.resource_name : 'N/A',
+          hours: e.hours
+        }))
+      });
     } catch (error) {
       console.error('Failed to load existing data:', error);
       alert('Failed to load existing data');
