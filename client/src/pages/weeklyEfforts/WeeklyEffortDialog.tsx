@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import weeklyEffortService from '../../services/weeklyEffortService';
 import weeklyMetricsService from '../../services/weeklyMetricsService';
+import resourceService from '../../services/resourceService';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
 import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString } from '../../lib/dateUtils';
@@ -45,6 +46,12 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   const [resourceEntries, setResourceEntries] = useState<ResourceEffortEntry[]>([
     { resource: '', hours: 0 }
   ]);
+  // CSV import states
+  const [csvReviewOpen, setCsvReviewOpen] = useState(false);
+  const [csvPendingAdds, setCsvPendingAdds] = useState<any[]>([]); // resources found globally but not assigned
+  const [csvUnknownEmails, setCsvUnknownEmails] = useState<string[]>([]); // emails not found anywhere
+  const [csvParsedRows, setCsvParsedRows] = useState<Array<{ email: string; hours: number }>>([]);
+  const [csvSelectedToAdd, setCsvSelectedToAdd] = useState<boolean[]>([]); // track which pending resources are selected
   const [existingMetricsId, setExistingMetricsId] = useState<string | null>(null);
   const [existingEffortIds, setExistingEffortIds] = useState<Map<string, string>>(new Map());
   const [isCurrentWeek, setIsCurrentWeek] = useState(true);
@@ -269,6 +276,106 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     return resourceEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
   };
 
+  // CSV upload handling
+  const handleCsvUpload = async (file: File) => {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const rows: Array<{ email: string; hours: number }> = [];
+    const unknowns: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(',').map(p => p.trim());
+      if (parts.length < 2) continue;
+      const email = parts[0].toLowerCase();
+      const hours = Number(parts[1]);
+      if (!email || isNaN(hours) || hours <= 0) continue;
+      rows.push({ email, hours });
+    }
+
+    // Build map of current project resources by email
+    const byEmail: Record<string, any> = {};
+    resources.forEach((r: any) => {
+      if (r.email) byEmail[r.email.toLowerCase()] = r;
+    });
+
+    // Track which emails require global search
+    const needSearch: string[] = [];
+    for (const row of rows) {
+      if (!byEmail[row.email]) needSearch.push(row.email);
+    }
+
+    // Search globally for missing emails
+    const foundGlobal: Record<string, any> = {};
+    if (needSearch.length > 0) {
+      // Use resourceService.search per email (to keep payload small)
+      for (const email of needSearch) {
+        try {
+          const res = await resourceService.search(email);
+          const match = (res || []).find((r: any) => r.email && r.email.toLowerCase() === email);
+          if (match) {
+            foundGlobal[email] = match;
+          } else {
+            unknowns.push(email);
+          }
+        } catch (e) {
+          unknowns.push(email);
+        }
+      }
+    }
+
+    // Prepare pending adds list (exclude ones already in project)
+    const adds: any[] = [];
+    Object.keys(foundGlobal).forEach(email => {
+      if (!byEmail[email]) adds.push(foundGlobal[email]);
+    });
+
+    setCsvParsedRows(rows);
+    setCsvPendingAdds(adds);
+    setCsvUnknownEmails(unknowns);
+    setCsvSelectedToAdd(adds.map(() => true)); // default all to checked
+    setCsvReviewOpen(true);
+  };
+
+  const applyCsvImport = () => {
+    // Optionally add selected pending resources to project resources list
+    const newResources = [...resources];
+    csvPendingAdds.forEach((r, idx) => {
+      if (csvSelectedToAdd[idx]) {
+        newResources.push(r);
+      }
+    });
+
+    // Build map of resource id by email after additions
+    const byEmail: Record<string, any> = {};
+    newResources.forEach((r: any) => {
+      if (r.email) byEmail[r.email.toLowerCase()] = r;
+    });
+
+    // Merge hours into resourceEntries
+    const updated = [...resourceEntries];
+    for (const row of csvParsedRows) {
+      const r = byEmail[row.email];
+      if (!r) continue; // skip unknowns
+      const existingIdx = updated.findIndex(e => e.resource === r._id);
+      if (existingIdx >= 0) {
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          hours: (updated[existingIdx].hours || 0) + row.hours,
+        };
+      } else {
+        updated.push({ resource: r._id, hours: row.hours });
+      }
+    }
+
+    setResources(newResources);
+    setResourceEntries(updated);
+    setCsvReviewOpen(false);
+    setCsvPendingAdds([]);
+    setCsvUnknownEmails([]);
+    setCsvParsedRows([]);
+    setCsvSelectedToAdd([]);
+  };
+
   // Filter to allow only Mondays in date picker
   const handleWeekStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedDate = e.target.value;
@@ -307,6 +414,7 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
       const validEntries = resourceEntries.filter(entry => entry.resource && entry.hours > 0);
       if (validEntries.length === 0) {
         alert('Please add at least one resource with hours');
+        setLoading(false);
         return;
       }
 
@@ -551,6 +659,30 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
               </Button>
             </div>
 
+            {/* CSV Upload */}
+            <div className="mb-4 flex items-center gap-3">
+              <input
+                id="csv-file"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleCsvUpload(file);
+                  e.currentTarget.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('csv-file')?.click()}
+              >
+                Upload CSV (email,hours)
+              </Button>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Adds hours to matching resources by email</span>
+            </div>
+
             {!editMode && selectedProject && resourceEntries.length > 1 && resourceEntries.some(e => e.resource) && (
               <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -627,6 +759,72 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
             </Button>
           </div>
         </form>
+        {/* CSV Review Dialog */}
+        {csvReviewOpen && (
+          <SimpleDialog open={csvReviewOpen} onClose={() => setCsvReviewOpen(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-xl w-full">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">CSV Import Review</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Parsed {csvParsedRows.length} rows.</p>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Success summary */}
+                {csvPendingAdds.length === 0 && csvUnknownEmails.length === 0 && csvParsedRows.length > 0 && (
+                  <div className="py-2">
+                    <p className="text-green-700 dark:text-green-400 text-sm font-medium">All emails matched existing project resources. Imported hours will be added to matching entries.</p>
+                  </div>
+                )}
+                {/* Pending adds */}
+                {csvPendingAdds.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">Resources not assigned to this project:</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Select to add them to the project and apply hours.</p>
+                    {csvPendingAdds.map((r, idx) => (
+                      <div key={r._id} className="flex items-center justify-between py-1">
+                        <div>
+                          <span className="text-sm text-gray-900 dark:text-white">{r.resource_name}</span>
+                          <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">{r.email}</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={csvSelectedToAdd[idx]}
+                          onChange={(e) => {
+                            const updated = [...csvSelectedToAdd];
+                            updated[idx] = e.target.checked;
+                            setCsvSelectedToAdd(updated);
+                          }}
+                          aria-label={`Add ${r.resource_name}`}
+                          className="w-4 h-4"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Unknown emails */}
+                {csvUnknownEmails.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm font-medium text-red-700 dark:text-red-400">Unknown emails (not found in Resources):</p>
+                    <ul className="list-disc ml-5 text-sm text-red-700 dark:text-red-400">
+                      {csvUnknownEmails.map(email => (
+                        <li key={email}>{email}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* No valid rows */}
+                {csvParsedRows.length === 0 && (
+                  <div className="py-2">
+                    <p className="text-sm text-red-700 dark:text-red-400">No valid rows found in CSV. Please use format: <code>email,hours</code> per line.</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setCsvReviewOpen(false)}>Cancel</Button>
+                <Button onClick={applyCsvImport}>Apply</Button>
+              </div>
+            </div>
+          </SimpleDialog>
+        )}
       </div>
     </SimpleDialog>
   );

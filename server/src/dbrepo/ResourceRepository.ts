@@ -25,7 +25,10 @@ export class ResourceRepository extends BaseRepository<IResource> {
 
   async searchByName(searchTerm: string): Promise<IResource[]> {
     return this.model.find({
-      resource_name: { $regex: searchTerm, $options: 'i' },
+      $or: [
+        { resource_name: { $regex: searchTerm, $options: 'i' } },
+        { email: { $regex: searchTerm, $options: 'i' } },
+      ],
     });
   }
 

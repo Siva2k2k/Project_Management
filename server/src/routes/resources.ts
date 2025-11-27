@@ -81,7 +81,7 @@ router.get(
   }
 );
 
-// GET /api/v1/resources/search - Search resources by name
+// GET /api/v1/resources/search - Search resources by name or email
 router.get(
   '/search',
   async (req: AuthRequest, res: Response, next: NextFunction) => {
