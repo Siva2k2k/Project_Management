@@ -233,13 +233,15 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
 
       if (efforts && efforts.length > 0) {
         const effortMap = new Map<string, string>();
-        const entries = efforts.map((effort: any) => {
-          effortMap.set(effort.resource._id || effort.resource, effort._id);
-          return {
-            resource: effort.resource._id || effort.resource,
-            hours: effort.hours,
-          };
-        });
+        const entries = efforts
+          .filter((effort: any) => effort.resource) // Filter out efforts with deleted resources
+          .map((effort: any) => {
+            effortMap.set(effort.resource._id || effort.resource, effort._id);
+            return {
+              resource: effort.resource._id || effort.resource,
+              hours: effort.hours,
+            };
+          });
         setResourceEntries(entries);
         setExistingEffortIds(effortMap);
       } else {

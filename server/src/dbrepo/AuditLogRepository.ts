@@ -93,7 +93,7 @@ export class AuditLogRepository extends BaseRepository<IAuditLog> {
     const { page = 1, limit = 10 } = pagination;
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find({ action })
         .populate('performed_by', 'name email')
@@ -102,6 +102,9 @@ export class AuditLogRepository extends BaseRepository<IAuditLog> {
         .limit(limit),
       this.model.countDocuments({ action }),
     ]);
+
+    // Keep audit logs even if user is deleted
+    const data = rawData;
 
     return {
       data,
@@ -124,7 +127,7 @@ export class AuditLogRepository extends BaseRepository<IAuditLog> {
       timestamp: { $gte: startDate, $lte: endDate },
     };
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model
         .find(filter)
         .populate('performed_by', 'name email')
@@ -133,6 +136,9 @@ export class AuditLogRepository extends BaseRepository<IAuditLog> {
         .limit(limit),
       this.model.countDocuments(filter),
     ]);
+
+    // Keep audit logs even if user is deleted
+    const data = rawData;
 
     return {
       data,

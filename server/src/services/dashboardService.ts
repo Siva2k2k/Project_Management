@@ -38,6 +38,10 @@ function getHourlyRate(project: IProjectDoc, resource?: IResource): number {
 async function calculateActualCost(efforts: any[], project: IProjectDoc): Promise<number> {
   let totalCost = 0;
   for (const effort of efforts) {
+    // Skip efforts with null/deleted resources
+    if (!effort.resource) {
+      continue;
+    }
     const resource = isPopulatedResource(effort.resource) ? effort.resource : undefined;
     const hourlyRate = getHourlyRate(project, resource);
     totalCost += effort.hours * hourlyRate;
@@ -253,6 +257,10 @@ export async function getCEODashboard(): Promise<DashboardData> {
 function extractResourceNames(efforts: any[]): Set<string> {
   const resourceNames = new Set<string>();
   efforts.forEach((e) => {
+    // Skip efforts with null/deleted resources
+    if (!e.resource) {
+      return;
+    }
     const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
     resourceNames.add(resourceName);
   });
@@ -271,6 +279,10 @@ function buildCumulativeEffortData(
   resourceNames.forEach(name => cumulativeMap.set(name, 0));
 
   sortedEfforts.forEach((e) => {
+    // Skip efforts with null/deleted resources
+    if (!e.resource) {
+      return;
+    }
     const week = toISODateString(e.week_start_date);
     const resourceName = isPopulatedResource(e.resource) ? e.resource.resource_name : 'Unknown';
     
