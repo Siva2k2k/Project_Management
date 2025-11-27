@@ -227,7 +227,7 @@ export function WeeklyEffortsList() {
                             {data.project.project_name}
                           </h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {data.project.customer.customer_name}
+                            {data.project.customer?.customer_name || 'Unknown Customer'}
                           </p>
                         </div>
                       </div>
@@ -319,7 +319,7 @@ export function WeeklyEffortsList() {
                               {data.project.project_name}
                             </h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              {data.project.customer.customer_name}
+                              {data.project.customer?.customer_name || 'Unknown Customer'}
                             </p>
                           </div>
                         </div>

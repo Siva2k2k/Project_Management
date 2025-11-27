@@ -28,6 +28,9 @@ export const config = {
   msClientSecret: process.env.MS_CLIENT_SECRET,
   msTenantId: process.env.MS_TENANT_ID,
   msRedirectUri: process.env.MS_REDIRECT_URI,
+
+  // Organizational Hourly Rate
+  organizationalHourlyRate: parseFloat(process.env.ORGANIZATIONAL_HOURLY_RATE || '50'),
 };
 
 export { connectDatabase, disconnectDatabase } from './database';
