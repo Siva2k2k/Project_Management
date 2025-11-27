@@ -79,6 +79,13 @@ const projectSchema = new Schema<IProject>(
       ref: 'User',
       required: [true, 'Assigned manager is required'],
     },
+    // Resources assigned to this project
+    resources: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Resource',
+      },
+    ],
     tracking_by: {
       type: String,
       enum: Object.values(ProjectTrackingBy),

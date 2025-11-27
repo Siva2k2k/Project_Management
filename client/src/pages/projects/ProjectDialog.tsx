@@ -14,6 +14,7 @@ import projectService, {
 import type { Project, CreateProjectInput } from '../../services/projectService';
 import customerService from '../../services/customerService';
 import userService from '../../services/userService';
+import resourceService from '../../services/resourceService';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 
@@ -29,6 +30,12 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
+  const [selectedResources, setSelectedResources] = useState<string[]>([]);
+  // Using a simple multi-select dropdown for resource assignment
+  const [query, setQuery] = useState('');
+  const [options, setOptions] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const {
     register,
@@ -39,43 +46,62 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
 
   useEffect(() => {
     if (open) {
-      fetchCustomers();
-      fetchManagers();
+      // Load data first, then reset form
+      const loadData = async () => {
+        // Load customers and managers immediately, resources loaded on-demand via search
+        await Promise.all([
+          fetchCustomers(),
+          fetchManagers(),
+        ]);
+        
+        // If editing, load project's existing resources for display
+        if (project?.resources && project.resources.length > 0) {
+          setResources(project.resources);
+          setOptions(project.resources);
+        }
 
-      if (project) {
-        reset({
-          project_name: project.project_name,
-          start_date: project.start_date.split('T')[0],
-          end_date: project.end_date.split('T')[0],
-          project_type: project.project_type,
-          estimated_effort: project.estimated_effort,
-          estimated_budget: project.estimated_budget,
-          estimated_resources: project.estimated_resources,
-          scope_completed: project.scope_completed,
-          overall_status: project.overall_status,
-          scope_status: project.scope_status,
-          quality_status: project.quality_status,
-          budget_status: project.budget_status,
-          assigned_manager: project.assigned_manager._id,
-          customer: project.customer._id,
-          project_status: project.project_status,
-          hourly_rate: project.hourly_rate,
-          hourly_rate_source: project.hourly_rate_source,
-        });
-      } else {
-        reset({
-          project_type: ProjectType.FIXED_PRICE,
-          scope_completed: 0,
-          overall_status: RAGStatus.GREEN,
-          scope_status: RAGStatus.GREEN,
-          quality_status: RAGStatus.GREEN,
-          budget_status: RAGStatus.GREEN,
-          project_status: ProjectStatus.ACTIVE,
-          hourly_rate_source: HourlyRateSource.RESOURCE,
-          // Auto-select manager if the logged-in user is a Manager
-          assigned_manager: user?.role === UserRole.MANAGER ? user._id : '',
-        });
-      }
+        if (project) {
+          // Extract resource IDs from project
+          const resourceIds = project.resources?.map(r => r._id) || [];
+          setSelectedResources(resourceIds);
+          
+          reset({
+            project_name: project.project_name,
+            start_date: project.start_date.split('T')[0],
+            end_date: project.end_date.split('T')[0],
+            project_type: project.project_type,
+            estimated_effort: project.estimated_effort,
+            estimated_budget: project.estimated_budget,
+            estimated_resources: project.estimated_resources,
+            scope_completed: project.scope_completed,
+            overall_status: project.overall_status,
+            scope_status: project.scope_status,
+            quality_status: project.quality_status,
+            budget_status: project.budget_status,
+            assigned_manager: project.assigned_manager._id,
+            customer: project.customer._id,
+            project_status: project.project_status,
+            hourly_rate: project.hourly_rate,
+            hourly_rate_source: project.hourly_rate_source,
+          });
+        } else {
+          setSelectedResources([]);
+          reset({
+            project_type: ProjectType.FIXED_PRICE,
+            scope_completed: 0,
+            overall_status: RAGStatus.GREEN,
+            scope_status: RAGStatus.GREEN,
+            quality_status: RAGStatus.GREEN,
+            budget_status: RAGStatus.GREEN,
+            project_status: ProjectStatus.ACTIVE,
+            hourly_rate_source: HourlyRateSource.RESOURCE,
+            // Auto-select manager if the logged-in user is a Manager
+            assigned_manager: user?.role === UserRole.MANAGER ? user._id : '',
+          });
+        }
+      };
+
+      loadData();
     }
   }, [open, project, reset]);
 
@@ -103,13 +129,59 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
     }
   };
 
+  const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setQuery(q);
+    
+    // If query is empty or too short, load active resources as default
+    if (q.trim().length === 0) {
+      setOptions([]);
+      return;
+    }
+    
+    if (q.trim().length < 2) {
+      // Show existing resources if available
+      setOptions(resources);
+      return;
+    }
+    
+    try {
+      setSearching(true);
+      const result = await resourceService.search(q.trim());
+      setOptions(result);
+      // Cache fetched resources for reuse
+      setResources(prev => {
+        const newResources = [...prev];
+        result.forEach((r: any) => {
+          if (!newResources.find(existing => existing._id === r._id)) {
+            newResources.push(r);
+          }
+        });
+        return newResources;
+      });
+    } catch (err) {
+      console.error('Search resources failed:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const addResource = (id: string) => {
+    setSelectedResources(prev => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const removeResource = (id: string) => {
+    setSelectedResources(prev => prev.filter(rid => rid !== id));
+  };
+
   const onSubmit = async (data: CreateProjectInput) => {
     try {
       setLoading(true);
       
-      // Clean up the data - remove NaN values
+      // Clean up the data - remove NaN values and add resources
       const cleanedData = {
         ...data,
+        resources: selectedResources,
         hourly_rate: (!data.hourly_rate || isNaN(data.hourly_rate as number)) ? undefined : data.hourly_rate,
       };
       
@@ -247,6 +319,60 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
                 {errors.end_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.end_date.message}</p>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Resources Assignment */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Assign Resources</h3>
+            <Label htmlFor="resource_search">Search Resources</Label>
+            <Input
+              id="resource_search"
+              value={query}
+              onChange={handleSearchChange}
+              placeholder="Type to search by name or email..."
+            />
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 max-h-48 overflow-y-auto">
+                {searching ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 px-2">Searching...</p>
+                ) : query.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 px-2">Start typing to search resources</p>
+                ) : options.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 px-2">No resources found for "{query}"</p>
+                ) : (
+                  options.map((r) => (
+                    <button
+                      key={r._id}
+                      type="button"
+                      onClick={() => addResource(r._id)}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{r.resource_name}</span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">{r.email} • {r.currency} {r.per_hour_rate}/hr</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">Selected</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedResources.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No resources selected</p>
+                  ) : (
+                    selectedResources.map((id) => {
+                      const r = resources.find((x) => x._id === id) || options.find((x) => x._id === id);
+                      return (
+                        <span key={id} className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+                          {r ? r.resource_name : id}
+                          <button type="button" onClick={() => removeResource(id)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">×</button>
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{selectedResources.length} resource(s) selected</p>
               </div>
             </div>
           </div>

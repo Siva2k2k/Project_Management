@@ -65,6 +65,7 @@ export interface Project {
   quality_status: RAGStatus;
   budget_status: RAGStatus;
   customer: { _id: string; customer_name: string };
+  resources?: Array<{ _id: string; resource_name: string; email: string }>;
   project_status: ProjectStatus;
   hourly_rate?: number;
   hourly_rate_source: HourlyRateSource;
@@ -92,6 +93,7 @@ export interface CreateProjectInput {
   quality_status?: RAGStatus;
   budget_status?: RAGStatus;
   customer: string;
+  resources?: string[];
   project_status?: ProjectStatus;
   hourly_rate?: number;
   hourly_rate_source?: HourlyRateSource;

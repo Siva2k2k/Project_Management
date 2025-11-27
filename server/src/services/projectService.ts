@@ -28,6 +28,9 @@ class ProjectService {
 
       const project = await projectRepository.create({
         ...data,
+        ...(data.resources && Array.isArray(data.resources) && {
+          resources: data.resources.map((id) => new Types.ObjectId(id)),
+        }),
         assigned_manager: new Types.ObjectId(data.assigned_manager),
         customer: new Types.ObjectId(data.customer),
         is_deleted: false,
@@ -124,6 +127,11 @@ class ProjectService {
       }
       if (data.customer) {
         updateData.customer = new Types.ObjectId(data.customer);
+      }
+
+      // Convert resources array of string IDs to ObjectIds if provided
+      if (data.resources) {
+        updateData.resources = data.resources.map((id) => new Types.ObjectId(id));
       }
 
       const updatedProject = await projectRepository.updateById(projectId, updateData);

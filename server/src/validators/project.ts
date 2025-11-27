@@ -26,6 +26,7 @@ export const createProjectSchema = z.object({
   quality_status: z.nativeEnum(RAGStatus).default(RAGStatus.GREEN),
   budget_status: z.nativeEnum(RAGStatus).default(RAGStatus.GREEN),
   customer: z.string().min(1, 'Customer is required'),
+  resources: z.array(z.string()).default([]),
   project_status: z.nativeEnum(ProjectStatus).default(ProjectStatus.ACTIVE),
   hourly_rate: z.preprocess(
     (val) => {
@@ -59,6 +60,7 @@ export const updateProjectSchema = z.object({
   quality_status: z.nativeEnum(RAGStatus).optional(),
   budget_status: z.nativeEnum(RAGStatus).optional(),
   customer: z.string().optional(),
+  resources: z.array(z.string()).optional(),
   project_status: z.nativeEnum(ProjectStatus).optional(),
   hourly_rate: z.coerce.number().min(0, 'Hourly rate cannot be negative').optional(),
   hourly_rate_source: z.nativeEnum(HourlyRateSource).optional(),

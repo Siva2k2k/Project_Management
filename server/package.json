@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "start:prod": "cross-env NODE_ENV=production node dist/index.js",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts",
+    "migrate:resources": "ts-node -r tsconfig-paths/register src/scripts/migrateProjectResources.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "heroku-postbuild": "cd ../client && npm install && npm run build && cd ../server && npm run build"
   },

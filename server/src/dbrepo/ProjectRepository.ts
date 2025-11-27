@@ -20,7 +20,8 @@ export class ProjectRepository extends BaseRepository<IProject> {
     const data = await this.model
       .find({ assigned_manager: managerId, is_deleted: false })
       .populate('customer', 'customer_name')
-      .populate('assigned_manager', 'name email');
+      .populate('assigned_manager', 'name email')
+      .populate('resources', 'resource_name email');
     
     // Filter out projects with null references
     return data.filter(item => item.customer && item.assigned_manager);
@@ -30,7 +31,8 @@ export class ProjectRepository extends BaseRepository<IProject> {
     const data = await this.model
       .find({ is_deleted: false })
       .populate('customer', 'customer_name')
-      .populate('assigned_manager', 'name email');
+      .populate('assigned_manager', 'name email')
+      .populate('resources', 'resource_name email');
     
     // Filter out projects with null references
     return data.filter(item => item.customer && item.assigned_manager);
@@ -40,7 +42,8 @@ export class ProjectRepository extends BaseRepository<IProject> {
     const data = await this.model
       .find({ customer: customerId })
       .populate('customer', 'customer_name')
-      .populate('assigned_manager', 'name email');
+      .populate('assigned_manager', 'name email')
+      .populate('resources', 'resource_name email');
     
     // Filter out projects with null references
     return data.filter(item => item.customer && item.assigned_manager);
@@ -50,7 +53,8 @@ export class ProjectRepository extends BaseRepository<IProject> {
     const data = await this.model
       .find({ overall_status: status })
       .populate('customer', 'customer_name')
-      .populate('assigned_manager', 'name email');
+      .populate('assigned_manager', 'name email')
+      .populate('resources', 'resource_name email');
     
     // Filter out projects with null references
     return data.filter(item => item.customer && item.assigned_manager);
@@ -93,6 +97,7 @@ export class ProjectRepository extends BaseRepository<IProject> {
         .find(query)
         .populate('customer', 'customer_name')
         .populate('assigned_manager', 'name email')
+        .populate('resources', 'resource_name email')
         .sort({ [sort]: sortOrder })
         .skip(skip)
         .limit(limit),
@@ -115,7 +120,8 @@ export class ProjectRepository extends BaseRepository<IProject> {
     return this.model
       .findById(id)
       .populate('customer', 'customer_name email')
-      .populate('assigned_manager', 'name email');
+      .populate('assigned_manager', 'name email')
+      .populate('resources', 'resource_name email');
   }
 
   async updateMilestone(

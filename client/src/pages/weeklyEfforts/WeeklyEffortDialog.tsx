@@ -9,7 +9,6 @@ import weeklyEffortService from '../../services/weeklyEffortService';
 import weeklyMetricsService from '../../services/weeklyMetricsService';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
-import resourceService from '../../services/resourceService';
 import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString } from '../../lib/dateUtils';
 
 interface ResourceEffortEntry {
@@ -62,11 +61,11 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   } = useForm<WeeklyEffortFormData>();
 
   const weekStartDate = watch('week_start_date');
+  const selectedProject = watch('project');
 
   useEffect(() => {
     if (open) {
       fetchProjects();
-      fetchResources();
 
       if (editMode) {
         // Edit mode - load existing efforts and metrics
@@ -124,21 +123,19 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     }
   }, [weekStartDate, editMode, setValue, isPrefilledWeek]);
 
+  // Populate resources from selected project
+  useEffect(() => {
+    if (selectedProject && !editMode) {
+      loadProjectResources(selectedProject);
+    }
+  }, [selectedProject, editMode]);
+
   const fetchProjects = async () => {
     try {
       const response = await projectService.getAll({ limit: 100 });
       setProjects(response.data);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
-    }
-  };
-
-  const fetchResources = async () => {
-    try {
-      const response = await resourceService.getAll({ limit: 100 });
-      setResources(response.data);
-    } catch (error) {
-      console.error('Failed to fetch resources:', error);
     }
   };
 
@@ -154,6 +151,38 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     } catch (error) {
       console.error('Failed to fetch project scope:', error);
       setProjectCurrentScope(null);
+    }
+  };
+
+  const loadProjectResources = async (projectId: string) => {
+    try {
+      const projectResponse = await projectService.getById(projectId);
+      
+      if (projectResponse) {
+        // Set project scope if available
+        if (projectResponse.scope_completed !== undefined) {
+          setProjectCurrentScope(projectResponse.scope_completed);
+        }
+        
+        // Load project-specific resources into the resources dropdown
+        if (projectResponse.resources && projectResponse.resources.length > 0) {
+          setResources(projectResponse.resources);
+          // Populate resource entries with project's assigned resources
+          const entries = projectResponse.resources.map((resource: any) => ({
+            resource: resource._id,
+            hours: 0,
+          }));
+          setResourceEntries(entries);
+        } else {
+          // No resources assigned to project, clear resources and keep default empty entry
+          setResources([]);
+          setResourceEntries([{ resource: '', hours: 0 }]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load project resources:', error);
+      setResources([]);
+      setResourceEntries([{ resource: '', hours: 0 }]);
     }
   };
 
@@ -374,26 +403,12 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-          {/* Project Current Progress - Show in create mode with prefilled project */}
+          {/* Minimal Project Progress Indicator (inline) */}
           {!editMode && prefilledProject && projectCurrentScope !== null && (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-green-900 dark:text-green-300">
-                  Project Current Progress
-                </h3>
-                <span className="text-lg font-bold text-green-700 dark:text-green-400">
-                  {projectCurrentScope}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-500"
-                  style={{ width: `${projectCurrentScope}%` }}
-                />
-              </div>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                Current project scope before this week's update
-              </p>
+            <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+              <span className="inline-flex items-center px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                Current scope: <span className="ml-1 font-semibold">{projectCurrentScope}%</span>
+              </span>
             </div>
           )}
 
@@ -463,7 +478,13 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
 
             {/* Scope Completed */}
             <div className="mb-4">
-              <Label htmlFor="scope_completed">Scope Completed (%) *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="scope_completed">Scope Completed (%) *</Label>
+                {/* Inline mini progress (right of label) */}
+                {!editMode && prefilledProject && projectCurrentScope !== null && (
+                  <span className="text-xs text-green-700 dark:text-green-400">Prev: {projectCurrentScope}%</span>
+                )}
+              </div>
               <Input
                 id="scope_completed"
                 type="number"
@@ -488,18 +509,6 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
               )}
             </div>
 
-            {/* Comments */}
-            <div>
-              <Label htmlFor="comments">Comments</Label>
-              <textarea
-                id="comments"
-                {...register('comments')}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="Add any comments about this week's progress..."
-              />
-            </div>
-
             {/* Total Hours Display */}
             <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <div className="flex items-center justify-between">
@@ -510,6 +519,18 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
                   {calculateTotalHours()} hrs
                 </span>
               </div>
+            </div>
+
+            {/* Comments */}
+            <div className="mt-4">
+              <Label htmlFor="comments">Comments</Label>
+              <textarea
+                id="comments"
+                rows={3}
+                {...register('comments')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                placeholder="Add any comments about this week's progress..."
+              />
             </div>
           </div>
 
@@ -529,6 +550,14 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
                 Add Resource
               </Button>
             </div>
+
+            {!editMode && selectedProject && resourceEntries.length > 1 && resourceEntries.some(e => e.resource) && (
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  ✓ Resources auto-populated from project assignments. Simply enter hours for each resource.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               {resourceEntries.map((entry, index) => (
