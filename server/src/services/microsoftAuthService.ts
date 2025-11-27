@@ -188,7 +188,6 @@ class MicrosoftAuthService {
         role: UserRole.MANAGER,
         is_active: true,
         email_verified: true,
-        refresh_tokens: [],
       } as Partial<IUser>);
 
       logger.info(`New user created via Microsoft SSO: ${normalizedEmail}`);

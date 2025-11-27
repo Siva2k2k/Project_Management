@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import { userRepository } from '../dbrepo';
-import { Types } from 'mongoose';
 import { generateTokenPair, verifyToken } from '../utils/jwt';
 import {
   AuthError,
@@ -48,7 +47,6 @@ class AuthService {
         email_verified: false,
         verification_token: verificationToken,
         verification_token_expires: verificationTokenExpires,
-        refresh_tokens: [],
       } as Partial<IUser>);
 
       // Send verification email (async, don't wait)
@@ -143,30 +141,6 @@ class AuthService {
     }
   }
 
-  // Helper: Validate refresh token for user
-  private validateRefreshToken(user: IUser, refreshToken: string): void {
-    const tokenExists = user.refresh_tokens.some(
-      (t) => t.token === refreshToken && t.expires > new Date()
-    );
-
-    if (!tokenExists) {
-      throw new AuthError('Invalid or expired refresh token');
-    }
-  }
-
-  // Helper: Rotate refresh tokens
-  private async rotateRefreshTokens(
-    userId: Types.ObjectId,
-    oldToken: string,
-    email: string,
-    role: string
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    await userRepository.removeRefreshToken(userId, oldToken);
-    const tokens = generateTokenPair(userId, email, role);
-    await userRepository.updateRefreshToken(userId, tokens.refreshToken, tokens.refreshExpires);
-    return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
-  }
-
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const decoded = verifyToken(refreshToken);
@@ -176,9 +150,28 @@ class AuthService {
         throw new AuthError('Account is not active');
       }
 
-      this.validateRefreshToken(user, refreshToken);
-      const tokens = await this.rotateRefreshTokens(user._id, refreshToken, user.email, user.role);
-      
+      // Check if refresh token exists and is valid
+      const tokenExists = user.refresh_token &&
+        user.refresh_token.token === refreshToken &&
+        user.refresh_token.expires > new Date();
+
+      if (!tokenExists) {
+        throw new AuthError('Invalid or expired refresh token');
+      }
+
+      // Remove old refresh token
+      await userRepository.removeRefreshToken(user._id);
+
+      // Generate new tokens
+      const tokens = generateTokenPair(user._id, user.email, user.role);
+
+      // Save new refresh token
+      await userRepository.updateRefreshToken(
+        user._id,
+        tokens.refreshToken,
+        tokens.refreshExpires
+      );
+
       logger.info(`Token refreshed for user: ${user.email}`);
       return tokens;
     } catch (error) {
@@ -190,15 +183,10 @@ class AuthService {
     }
   }
 
-  async logout(userId: string, refreshToken?: string): Promise<void> {
+  async logout(userId: string): Promise<void> {
     try {
-      if (refreshToken) {
-        // Remove specific refresh token
-        await userRepository.removeRefreshToken(userId, refreshToken);
-      } else {
-        // Remove all refresh tokens (logout from all devices)
-        await userRepository.removeAllRefreshTokens(userId);
-      }
+      // Remove the user's refresh token
+      await userRepository.removeRefreshToken(userId);
 
       logger.info(`User logged out: ${userId}`);
     } catch (error) {

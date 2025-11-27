@@ -65,7 +65,7 @@ const userSchema = new Schema<IUser>(
       type: Date,
       select: false,
     },
-    refresh_tokens: [refreshTokenSchema],
+    refresh_token: refreshTokenSchema,
     last_modified_date: {
       type: Date,
       default: Date.now,

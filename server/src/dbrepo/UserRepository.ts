@@ -42,8 +42,8 @@ export class UserRepository extends BaseRepository<IUser> {
     return this.model.findByIdAndUpdate(
       userId,
       {
-        $push: {
-          refresh_tokens: { token, expires, createdAt: new Date() },
+        $set: {
+          refresh_token: { token, expires, createdAt: new Date() },
         },
       },
       { new: true }
@@ -51,13 +51,12 @@ export class UserRepository extends BaseRepository<IUser> {
   }
 
   async removeRefreshToken(
-    userId: string | Types.ObjectId,
-    token: string
+    userId: string | Types.ObjectId
   ): Promise<IUser | null> {
     return this.model.findByIdAndUpdate(
       userId,
       {
-        $pull: { refresh_tokens: { token } },
+        $unset: { refresh_token: '' },
       },
       { new: true }
     );
@@ -66,21 +65,21 @@ export class UserRepository extends BaseRepository<IUser> {
   async removeAllRefreshTokens(userId: string | Types.ObjectId): Promise<IUser | null> {
     return this.model.findByIdAndUpdate(
       userId,
-      { $set: { refresh_tokens: [] } },
+      { $unset: { refresh_token: '' } },
       { new: true }
     );
   }
 
   async cleanExpiredTokens(userId: string | Types.ObjectId): Promise<IUser | null> {
-    return this.model.findByIdAndUpdate(
-      userId,
-      {
-        $pull: {
-          refresh_tokens: { expires: { $lt: new Date() } },
-        },
-      },
-      { new: true }
-    );
+    const user = await this.model.findById(userId);
+    if (user && user.refresh_token && user.refresh_token.expires < new Date()) {
+      return this.model.findByIdAndUpdate(
+        userId,
+        { $unset: { refresh_token: '' } },
+        { new: true }
+      );
+    }
+    return user;
   }
 
   async deactivateUser(userId: string | Types.ObjectId): Promise<IUser | null> {

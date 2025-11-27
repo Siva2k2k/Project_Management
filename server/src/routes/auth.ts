@@ -113,9 +113,7 @@ router.post(
   authenticate,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
-
-      await authService.logout(req.user!._id.toString(), refreshToken);
+      await authService.logout(req.user!._id.toString());
 
       // Clear refresh token cookie
       res.clearCookie('refreshToken');

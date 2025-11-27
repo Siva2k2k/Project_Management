@@ -294,9 +294,32 @@ class UserService {
       };
 
       for (const userData of data.users) {
-        const result = await this.importSingleUser(userData, adminId);
-        
-        if (result.success) {
+        try {
+          // Check if user already exists
+          const existingUser = await userRepository.findByEmailWithoutPassword(
+            userData.email.toLowerCase()
+          );
+
+          if (existingUser) {
+            results.failed++;
+            results.errors.push(`${userData.email}: Email already exists`);
+            continue;
+          }
+
+          // Generate random password if not provided
+          const password =
+            userData.password ||
+            `Import${Date.now()}${Math.random().toString(36).slice(-8)}`;
+
+          await userRepository.create({
+            name: userData.name,
+            email: userData.email.toLowerCase(),
+            password,
+            role: (userData.role as UserRole) || UserRole.MANAGER,
+            is_active: true,
+            last_modified_by: new Types.ObjectId(adminId),
+          } as Partial<IUser>);
+
           results.success++;
         } else {
           results.failed++;
@@ -365,7 +388,6 @@ class UserService {
         role: data.role as UserRole,
         is_active: true,
         email_verified: true,
-        refresh_tokens: [],
         last_modified_by: new Types.ObjectId(adminId),
       } as Partial<IUser>);
 
