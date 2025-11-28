@@ -80,37 +80,52 @@ export function TrendsDashboard() {
         </div>
       </div>
 
-      {/* Effort Trend */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Weekly Effort Trend
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Total hours logged by all resources over time
-        </p>
-        <ResponsiveContainer width="100%" height={400}>
-          <AreaChart data={data.effortTrend}>
-            <defs>
-              <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="date" stroke="#9ca3af" />
-            <YAxis stroke="#9ca3af" />
-            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
-            <Legend wrapperStyle={{ color: '#9ca3af' }} />
-            <Area
-              type="monotone"
-              dataKey="hours"
-              stroke="#8b5cf6"
-              fillOpacity={1}
-              fill="url(#colorHours)"
-              name="Hours"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+            Total Effort (Period)
+          </h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {data.effortTrend.reduce((sum, item) => sum + item.hours, 0).toLocaleString()} hrs
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Across all projects
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+            Total Cost (Period)
+          </h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            $
+            {data.budgetTrend.length > 0
+              ? data.budgetTrend[data.budgetTrend.length - 1].cost.toLocaleString()
+              : '0'}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Cumulative spending
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+            Average Weekly Effort
+          </h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {data.effortTrend.length > 0
+              ? Math.round(
+                  data.effortTrend.reduce((sum, item) => sum + item.hours, 0) /
+                    data.effortTrend.length
+                ).toLocaleString()
+              : '0'}{' '}
+            hrs
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Per week average
+          </p>
+        </div>
       </div>
 
       {/* Budget Burn-down */}
@@ -179,52 +194,37 @@ export function TrendsDashboard() {
         )}
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-            Total Effort (Period)
-          </h3>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {data.effortTrend.reduce((sum, item) => sum + item.hours, 0).toLocaleString()} hrs
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Across all projects
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-            Total Cost (Period)
-          </h3>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            $
-            {data.budgetTrend.length > 0
-              ? data.budgetTrend[data.budgetTrend.length - 1].cost.toLocaleString()
-              : '0'}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Cumulative spending
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-            Average Weekly Effort
-          </h3>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {data.effortTrend.length > 0
-              ? Math.round(
-                  data.effortTrend.reduce((sum, item) => sum + item.hours, 0) /
-                    data.effortTrend.length
-                ).toLocaleString()
-              : '0'}{' '}
-            hrs
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Per week average
-          </p>
-        </div>
+      {/* Effort Trend */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Weekly Effort Trend
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Total hours logged by all resources over time
+        </p>
+        <ResponsiveContainer width="100%" height={400}>
+          <AreaChart data={data.effortTrend}>
+            <defs>
+              <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="date" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" />
+            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <Legend wrapperStyle={{ color: '#9ca3af' }} />
+            <Area
+              type="monotone"
+              dataKey="hours"
+              stroke="#8b5cf6"
+              fillOpacity={1}
+              fill="url(#colorHours)"
+              name="Hours"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

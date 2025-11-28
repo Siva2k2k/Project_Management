@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  UserCircle,
   FolderKanban,
   Clock,
   TrendingUp,
@@ -68,11 +67,6 @@ const menuItems: MenuItem[] = [
     path: '/manage-users',
     icon: <UserCog className="w-5 h-5" />,
     roles: ['Admin'],
-  },
-  {
-    name: 'Profile',
-    path: '/profile',
-    icon: <UserCircle className="w-5 h-5" />,
   },
 ];
 
@@ -214,7 +208,12 @@ export function Sidebar() {
               
               {/* User Profile */}
               {user && (
-                <div className={`flex items-center ${showCollapsed ? 'justify-center' : 'space-x-3 overflow-hidden'}`}>
+                <Link 
+                  to="/profile" 
+                  onClick={closeSidebar}
+                  className={`flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 transition-colors ${showCollapsed ? 'justify-center' : 'space-x-3 overflow-hidden'}`}
+                  title={showCollapsed ? 'Profile' : ''}
+                >
                   <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-sm">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
@@ -228,7 +227,7 @@ export function Sidebar() {
                       </span>
                     </div>
                   )}
-                </div>
+                </Link>
               )}
 
               {/* Actions: Theme & Logout */}

@@ -252,7 +252,7 @@ export function WeeklyEffortsList() {
         </div>
         <div className="w-full md:w-72">
           <label className="block text-sm font-bold text-black-700 dark:text-gray-300 mb-2">
-            Selected Project
+            Project Name
           </label>
           <Select
             value={selectedProjectId}
