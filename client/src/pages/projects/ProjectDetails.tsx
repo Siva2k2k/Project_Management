@@ -333,19 +333,84 @@ export function ProjectDetails() {
       </div>
 
       {/* Charts */}
+      {/* Effort Trend (Full Width) - Weekly hours sum */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Effort Trend (Weekly)
+        </h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart
+            data={(() => {
+              const byWeek = drillDownData.effortByResource || [];
+              const result: { week: string; hours: number }[] = [];
+              for (const row of byWeek) {
+                const weekLabel = row.week;
+                const sum = Object.keys(row)
+                  .filter((k) => k !== 'week')
+                  .reduce((s, k) => s + (Number(row[k]) || 0), 0);
+                result.push({ week: weekLabel, hours: sum });
+              }
+              return result;
+            })()}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="week" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" />
+            <Tooltip formatter={(value: any) => `${value.toLocaleString()} hrs`} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <Legend wrapperStyle={{ color: '#9ca3af' }} />
+            <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={2} name="Weekly Hours" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cumulative Effort Trend: sum of worked hours (running total) */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Cumulative Effort Trend
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            {
+              // Compute cumulative totals from effortByResource
+            }
+            <LineChart
+              data={(() => {
+                const byWeek = drillDownData.effortByResource || [];
+                const result: { week: string; total: number }[] = [];
+                let running = 0;
+                for (const row of byWeek) {
+                  const weekLabel = row.week;
+                  const sum = Object.keys(row)
+                    .filter((k) => k !== 'week')
+                    .reduce((s, k) => s + (Number(row[k]) || 0), 0);
+                  running += sum;
+                  result.push({ week: weekLabel, total: running });
+                }
+                return result;
+              })()}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip formatter={(value: any) => `${value.toLocaleString()} hrs`} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
+              <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2} name="Cumulative Hours" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
         {/* Effort by Resource */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Cumulative Effort by Resource
+            Effort by Resource
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={drillDownData.effortByResource}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
               {drillDownData.effortByResource.length > 0 &&
                 Object.keys(drillDownData.effortByResource[0])
                   .filter((key) => key !== 'week')
@@ -373,11 +438,11 @@ export function ProjectDetails() {
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={drillDownData.budgetTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" />
-              <YAxis />
-              <Tooltip formatter={(value: any) => `$${value.toLocaleString()}`} />
-              <Legend />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip formatter={(value: any) => `$${value.toLocaleString()}`} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
               <Line
                 type="monotone"
                 dataKey="estimated"
@@ -404,11 +469,11 @@ export function ProjectDetails() {
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={drillDownData.scopeTrend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="week" stroke="#9ca3af" />
+                <YAxis domain={[0, 100]} stroke="#9ca3af" />
+                <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+                <Legend wrapperStyle={{ color: '#9ca3af' }} />
                 <Line
                   type="monotone"
                   dataKey="scope_completed"

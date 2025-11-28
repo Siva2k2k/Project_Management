@@ -157,8 +157,8 @@ export function ManagerDashboard() {
                   <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] || '#6b7280'} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -170,10 +170,10 @@ export function ManagerDashboard() {
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.projectsByCustomer}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="customer" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="customer" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
               <Bar dataKey="count" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
@@ -186,11 +186,11 @@ export function ManagerDashboard() {
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data.effortByWeek}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
               <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -221,12 +221,12 @@ export function ManagerDashboard() {
           Resource Allocation
         </h2>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data.resourceAllocation}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="resource" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
+            <BarChart data={data.resourceAllocation}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="resource" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" />
+            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <Legend wrapperStyle={{ color: '#9ca3af' }} />
             <Bar dataKey="hours" fill="#3b82f6" name="Total Hours" />
             <Bar dataKey="projects" fill="#f59e0b" name="Projects" />
           </BarChart>

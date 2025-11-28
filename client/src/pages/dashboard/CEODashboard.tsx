@@ -14,6 +14,7 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
+  ReferenceLine,
 } from 'recharts';
 import { dashboardService } from '../../services/dashboardService';
 import type { DashboardData } from '../../services/dashboardService';
@@ -158,8 +159,8 @@ export function CEODashboard() {
                   <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] || '#6b7280'} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -171,24 +172,26 @@ export function CEODashboard() {
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data.effortByWeek}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis 
                 dataKey="week" 
-                tick={{ fill: 'currentColor' }}
-                className="text-gray-600 dark:text-gray-400"
+                tick={{ fill: '#9ca3af' }}
+                stroke="#9ca3af"
               />
               <YAxis 
-                tick={{ fill: 'currentColor' }}
-                className="text-gray-600 dark:text-gray-400"
+                tick={{ fill: '#9ca3af' }}
+                stroke="#9ca3af"
               />
               <Tooltip 
                 contentStyle={{
-                  backgroundColor: 'var(--tooltip-bg)',
-                  border: '1px solid var(--tooltip-border)',
+                  backgroundColor: '#1f2937',
+                  border: '1px solid #374151',
                   borderRadius: '0.375rem',
                 }}
+                labelStyle={{ color: '#f3f4f6' }}
+                itemStyle={{ color: '#f3f4f6' }}
               />
-              <Legend />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
               <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -240,28 +243,49 @@ export function CEODashboard() {
                   textAnchor="end"
                   height={90}
                   interval={0}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
-                  axisLine={{ stroke: '#e5e7eb' }}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={{ stroke: '#374151' }}
                   tickLine={false}
                 />
                 <YAxis
-                  domain={[0, 100]}
+                  domain={[
+                    (dataMin: number) => {
+                      const minValue = Math.min(dataMin, 0);
+                      return Math.floor(minValue / 10) * 10 - 10;
+                    },
+                    (dataMax: number) => {
+                      const maxValue = Math.max(dataMax, 100);
+                      return Math.ceil(maxValue / 10) * 10;
+                    }
+                  ]}
+                  ticks={(() => {
+                    const min = Math.floor(Math.min(...data.projectsSummary.map(p => p.scope_completed), 0) / 10) * 10 - 10;
+                    const max = Math.ceil(Math.max(...data.projectsSummary.map(p => p.scope_completed), 100) / 10) * 10;
+                    const ticks = [];
+                    for (let i = min; i <= max; i += 10) {
+                      ticks.push(i);
+                    }
+                    return ticks;
+                  })()}
                   tickFormatter={(value) => `${value}%`}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
                   axisLine={false}
                   tickLine={false}
-                  width={45}
+                  width={50}
                 />
                 <Tooltip
                   formatter={(value: number) => [`${value}%`, 'Progress']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255,255,255,0.95)',
-                    border: 'none',
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
+                  labelStyle={{ color: '#f3f4f6' }}
+                  itemStyle={{ color: '#f3f4f6' }}
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 />
+                <ReferenceLine y={0} stroke="#374151" strokeWidth={2} />
                 <Bar
                   dataKey="scope_completed"
                   radius={[4, 4, 0, 0]}
@@ -274,7 +298,9 @@ export function CEODashboard() {
                       style={{ cursor: 'pointer' }}
                       onClick={() => navigate(`/projects/${entry._id}`)}
                       fill={
-                        entry.scope_completed >= 80
+                        entry.scope_completed < 0
+                          ? '#9333ea'
+                          : entry.scope_completed >= 80
                           ? '#10b981'
                           : entry.scope_completed >= 50
                           ? '#f59e0b'
@@ -332,13 +358,13 @@ export function CEODashboard() {
                   textAnchor="end"
                   height={90}
                   interval={0}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
-                  axisLine={{ stroke: '#e5e7eb' }}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={{ stroke: '#374151' }}
                   tickLine={false}
                 />
                 <YAxis
                   tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
-                  tick={{ fontSize: 11, fill: 'currentColor' }}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
                   axisLine={false}
                   tickLine={false}
                   width={55}
@@ -346,11 +372,13 @@ export function CEODashboard() {
                 <Tooltip
                   formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255,255,255,0.95)',
-                    border: 'none',
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
+                  labelStyle={{ color: '#f3f4f6' }}
+                  itemStyle={{ color: '#f3f4f6' }}
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 />
                 <Bar dataKey="estimated" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ cursor: 'pointer' }}>

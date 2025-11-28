@@ -96,11 +96,11 @@ export function TrendsDashboard() {
                 <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="date" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" />
+            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <Legend wrapperStyle={{ color: '#9ca3af' }} />
             <Area
               type="monotone"
               dataKey="hours"
@@ -123,13 +123,16 @@ export function TrendsDashboard() {
         </p>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={data.budgetTrend}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="date" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" />
             <Tooltip
               formatter={(value: any) => `$${value.toLocaleString()}`}
+              contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
+              labelStyle={{ color: '#f3f4f6' }}
+              itemStyle={{ color: '#f3f4f6' }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: '#9ca3af' }} />
             <Line
               type="monotone"
               dataKey="cost"
@@ -154,11 +157,11 @@ export function TrendsDashboard() {
         {data.scopeTrend && data.scopeTrend.length > 0 ? (
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={data.scopeTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="date" stroke="#9ca3af" />
+              <YAxis domain={[0, 100]} stroke="#9ca3af" />
+              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
               <Line
                 type="monotone"
                 dataKey="scope_completed"
