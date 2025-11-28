@@ -57,7 +57,7 @@ export function WeeklyEffortsList() {
     }
   }, [selectedProjectId]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (preserveSelection: boolean = false) => {
     try {
       setLoading(true);
       const params: any = { limit: 100 };
@@ -67,8 +67,8 @@ export function WeeklyEffortsList() {
       const response = await projectService.getAll(params);
       setProjects(response.data);
       
-      // Select first project by default if available
-      if (response.data.length > 0) {
+      // Select first project by default if no project is currently selected and not preserving selection
+      if (!preserveSelection && response.data.length > 0 && !selectedProjectId) {
         setSelectedProjectId(response.data[0]._id);
       }
     } catch (error) {
@@ -193,8 +193,8 @@ export function WeeklyEffortsList() {
     setIsEntryDialogOpen(false);
     if (selectedProjectId) {
       fetchProjectMetrics(selectedProjectId);
-      // Also refresh project details to update scope if changed
-      fetchProjects(); 
+      // Also refresh project details to update scope if changed, but preserve selection
+      fetchProjects(true); 
     }
   };
 

@@ -19,7 +19,7 @@ export interface DashboardData {
   projectsSummary: ProjectSummary[];
   projectsByCustomer: Array<{ customer: string; count: number }>;
   projectsByStatus: Array<{ status: string; count: number }>;
-  effortByWeek: Array<{ week: string; hours: number }>;
+  effortByWeek: Array<{ week: string; [projectName: string]: string | number }>;
   budgetUtilization: Array<{ project: string; estimated: number; actual: number }>;
   resourceAllocation: Array<{ resource: string; hours: number; projects: number }>;
   totalProjects: number;

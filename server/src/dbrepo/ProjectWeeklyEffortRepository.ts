@@ -284,6 +284,49 @@ export class ProjectWeeklyEffortRepository extends BaseRepository<IProjectWeekly
     // Filter out entries with null references
     return data.filter(item => item.project && item.resource);
   }
+
+  async getEffortByWeekByProject(
+    projectIds: string[],
+    startDate: Date
+  ): Promise<{ week_start_date: Date; project_name: string; total_hours: number }[]> {
+    const objectIds = projectIds.map((id) => new Types.ObjectId(id));
+    return this.model.aggregate([
+      {
+        $match: {
+          project: { $in: objectIds },
+          week_start_date: { $gte: startDate },
+        },
+      },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectDetails',
+        },
+      },
+      { $unwind: '$projectDetails' },
+      {
+        $group: {
+          _id: {
+            week_start_date: '$week_start_date',
+            project_id: '$project',
+            project_name: '$projectDetails.project_name'
+          },
+          total_hours: { $sum: '$hours' },
+        },
+      },
+      { $sort: { '_id.week_start_date': 1, '_id.project_name': 1 } },
+      {
+        $project: {
+          _id: 0,
+          week_start_date: '$_id.week_start_date',
+          project_name: '$_id.project_name',
+          total_hours: 1,
+        },
+      },
+    ]);
+  }
 }
 
 export const projectWeeklyEffortRepository = new ProjectWeeklyEffortRepository();

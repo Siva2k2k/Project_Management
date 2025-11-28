@@ -104,7 +104,7 @@ interface DashboardData {
   projectsSummary: ProjectSummary[];
   projectsByCustomer: Array<{ customer: string; count: number }>;
   projectsByStatus: Array<{ status: string; count: number }>;
-  effortByWeek: Array<{ week: string; hours: number }>;
+  effortByWeek: Array<{ week: string; [projectName: string]: string | number }>;
   budgetUtilization: Array<{ project: string; estimated: number; actual: number }>;
   resourceAllocation: Array<{ resource: string; hours: number; projects: number }>;
   totalProjects: number;
@@ -153,15 +153,51 @@ export async function getManagerDashboard(userId: string): Promise<DashboardData
     count,
   }));
 
-  // Effort by week - last 12 weeks
+  // Effort by week - last 12 weeks with project breakdown
   const projectIds = projects.map((p) => p._id.toString());
   const twelveWeeksAgo = getDaysAgoUTC(84);
 
-  const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, twelveWeeksAgo);
-  const effortByWeek = effortData.map((e) => ({
-    week: toISODateString(e.week_start_date),
-    hours: e.total_hours,
-  }));
+  // Get project-specific effort data
+  const projectEffortData = await projectWeeklyEffortRepository.getEffortByWeekByProject(projectIds, twelveWeeksAgo);
+  
+  // Get all unique weeks and projects for complete data structure
+  const allWeeks = new Set<string>();
+  const allProjects = new Set<string>();
+  
+  projectEffortData.forEach(item => {
+    allWeeks.add(toISODateString(item.week_start_date));
+    allProjects.add(item.project_name.replace(/\s+/g, '_'));
+  });
+  
+  // Sort weeks chronologically
+  const sortedWeeks = Array.from(allWeeks).sort((a, b) => 
+    new Date(a).getTime() - new Date(b).getTime()
+  );
+  
+  // Transform data for multi-line chart - ensure all weeks have all projects
+  const weekMap = new Map<string, any>();
+  
+  // Initialize all weeks with all projects set to 0
+  sortedWeeks.forEach(weekKey => {
+    const weekData: any = { week: weekKey };
+    allProjects.forEach(projectKey => {
+      weekData[projectKey] = 0; // Initialize with 0
+    });
+    weekMap.set(weekKey, weekData);
+  });
+  
+  // Fill in actual effort data
+  projectEffortData.forEach(item => {
+    const weekKey = toISODateString(item.week_start_date);
+    const projectKey = item.project_name.replace(/\s+/g, '_');
+    const weekData = weekMap.get(weekKey);
+    if (weekData) {
+      weekData[projectKey] = item.total_hours;
+    }
+  });
+
+  // Convert to array
+  const effortByWeek = Array.from(weekMap.values());
 
   // Budget utilization
   const budgetUtilization = await Promise.all(

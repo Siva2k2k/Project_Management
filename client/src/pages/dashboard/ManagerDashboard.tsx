@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart,
   Bar,
+  BarChart,
   PieChart,
   Pie,
   LineChart,
@@ -24,6 +24,11 @@ const STATUS_COLORS: Record<string, string> = {
   Amber: '#f59e0b',
   Green: '#10b981',
 };
+
+const CUSTOMER_COLORS = [
+  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+];
 
 export function ManagerDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -163,75 +168,200 @@ export function ManagerDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Projects by Customer */}
+        {/* Projects by Customer - Changed to Pie Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Projects by Customer
           </h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.projectsByCustomer}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="customer" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
-              <Bar dataKey="count" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Effort by Week */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Effort Trend (Last 12 Weeks)
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data.effortByWeek}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="week" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
+            <PieChart>
+              <Pie
+                data={data.projectsByCustomer}
+                dataKey="count"
+                nameKey="customer"
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                label
+              >
+                {data.projectsByCustomer.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={CUSTOMER_COLORS[index % CUSTOMER_COLORS.length]} />
+                ))}
+              </Pie>
               <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
               <Legend wrapperStyle={{ color: '#9ca3af' }} />
-              <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={2} />
-            </LineChart>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Second Row Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Resource by Project - Horizontal Bar */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Resources by Project
+          </h2>
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={data.resourceAllocation} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis 
+                type="number" 
+                stroke="#9ca3af" 
+                tickFormatter={(value) => Math.floor(value).toString()}
+                domain={[0, 'dataMax']}
+              />
+              <YAxis dataKey="resource" type="category" width={120} stroke="#9ca3af" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} 
+                labelStyle={{ color: '#f3f4f6' }} 
+                itemStyle={{ color: '#f3f4f6' }}
+              />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
+              <Bar dataKey="projects" fill="#8b5cf6" name="Projects Count" />
+            </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Budget Utilization */}
+        {/* Project Progress Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Budget Utilization (Top 10 Projects)
+            Project Progress
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.budgetUtilization} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="project" type="category" width={100} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="estimated" fill="#10b981" name="Estimated" />
-              <Bar dataKey="actual" fill="#ef4444" name="Actual" />
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={data.projectsSummary.slice(0, 8)} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis type="number" domain={[0, 100]} stroke="#9ca3af" />
+              <YAxis dataKey="project_name" type="category" width={80} stroke="#9ca3af" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} 
+                labelStyle={{ color: '#f3f4f6' }} 
+                itemStyle={{ color: '#f3f4f6' }}
+                formatter={(value) => [`${value}%`, 'Progress']}
+              />
+              <Bar dataKey="scope_completed" fill="#10b981" name="Completion %" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Resource Allocation */}
+      {/* Budget Utilization - Full Width with Horizontal Scroll */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Budget Utilization
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Estimated vs Actual budget comparison</p>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-emerald-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">Estimated</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-blue-500"></span>
+              <span className="text-gray-600 dark:text-gray-400">Actual</span>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: `${Math.max(600, data.budgetUtilization.length * 90)}px`, paddingLeft: '20px' }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart
+                data={data.budgetUtilization}
+                margin={{ top: 10, right: 20, left: 20, bottom: 70 }}
+onClick={(chartData: any) => {
+                  if (chartData && chartData.activePayload && chartData.activePayload[0]) {
+                    navigate(`/projects`);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-200 dark:stroke-gray-700" />
+                <XAxis
+                  dataKey="project"
+                  angle={-45}
+                  textAnchor="end"
+                  height={90}
+                  interval={0}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={{ stroke: '#374151' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={55}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                  labelStyle={{ color: '#f3f4f6' }}
+                  itemStyle={{ color: '#f3f4f6' }}
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                />
+                <Bar dataKey="estimated" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ cursor: 'pointer' }} />
+                <Bar dataKey="actual" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ cursor: 'pointer' }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Effort Trend - Multi-line per project */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Resource Allocation
+          Weekly Effort Trend by Projects (Last 12 Weeks)
         </h2>
-        <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.resourceAllocation}>
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={data.effortByWeek} margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="resource" stroke="#9ca3af" />
-            <YAxis stroke="#9ca3af" />
-            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <XAxis dataKey="week" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} 
+              labelStyle={{ color: '#f3f4f6' }} 
+              itemStyle={{ color: '#f3f4f6' }}
+            />
             <Legend wrapperStyle={{ color: '#9ca3af' }} />
-            <Bar dataKey="hours" fill="#3b82f6" name="Total Hours" />
-            <Bar dataKey="projects" fill="#f59e0b" name="Projects" />
-          </BarChart>
+            {/* Generate lines for each project */}
+            {(() => {
+              // Get all unique project keys from all data points
+              const allProjectKeys = new Set<string>();
+              data.effortByWeek.forEach(weekData => {
+                Object.keys(weekData).forEach(key => {
+                  if (key !== 'week') {
+                    allProjectKeys.add(key);
+                  }
+                });
+              });
+              
+              return Array.from(allProjectKeys).slice(0, 8).map((projectKey, index) => (
+                <Line 
+                  key={projectKey}
+                  type="monotone" 
+                  dataKey={projectKey} 
+                  stroke={CUSTOMER_COLORS[index % CUSTOMER_COLORS.length]} 
+                  strokeWidth={2} 
+                  name={projectKey.replace(/_/g, ' ')}
+                  dot={{ r: 3 }}
+                  connectNulls={false}
+                />
+              ));
+            })()}
+          </LineChart>
         </ResponsiveContainer>
       </div>
+
+
 
       {/* Projects Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
