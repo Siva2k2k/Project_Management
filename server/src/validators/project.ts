@@ -10,7 +10,9 @@ const milestoneSchema = z.object({
 });
 
 export const createProjectSchema = z.object({
-  project_name: z.string().trim().min(1, 'Project name is required').max(200, 'Project name cannot exceed 200 characters'),
+  project_name: z.string().trim().min(1, 'Project name is required').max(200, 'Project name cannot exceed 200 characters')
+    .regex(/^[A-Za-z]/, 'Project name must start with a letter')
+    .regex(/[A-Za-z]/, 'Project name must contain at least one letter'),
   start_date: z.coerce.date(),
   end_date: z.coerce.date(),
   project_type: z.nativeEnum(ProjectType),
@@ -44,7 +46,9 @@ export const createProjectSchema = z.object({
 });
 
 export const updateProjectSchema = z.object({
-  project_name: z.string().trim().max(200, 'Project name cannot exceed 200 characters').optional(),
+  project_name: z.string().trim().max(200, 'Project name cannot exceed 200 characters')
+    .regex(/^[A-Za-z]/, 'Project name must start with a letter')
+    .regex(/[A-Za-z]/, 'Project name must contain at least one letter').optional(),
   start_date: z.coerce.date().optional(),
   end_date: z.coerce.date().optional(),
   project_type: z.nativeEnum(ProjectType).optional(),

@@ -26,6 +26,12 @@ class CustomerService {
         throw new ConflictError('Customer with this email already exists');
       }
 
+      // Check if customer with same name already exists
+      const existingCustomerByName = await customerRepository.findOne({ customer_name: data.customer_name });
+      if (existingCustomerByName) {
+        throw new ConflictError('Customer with this name already exists');
+      }
+
       const customer = await customerRepository.create({
         ...data,
         created_by: new Types.ObjectId(createdBy),
@@ -104,6 +110,14 @@ class CustomerService {
         const existingCustomer = await customerRepository.findByEmail(data.email);
         if (existingCustomer) {
           throw new ConflictError('Email already in use');
+        }
+      }
+
+      // Check if name is being changed and if it's already taken
+      if (data.customer_name && data.customer_name !== customer.customer_name) {
+        const existingCustomerByName = await customerRepository.findOne({ customer_name: data.customer_name });
+        if (existingCustomerByName) {
+          throw new ConflictError('Customer name already in use');
         }
       }
 

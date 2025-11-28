@@ -28,6 +28,12 @@ class ResourceService {
         throw new ConflictError('Resource with this email already exists');
       }
 
+      // Check if resource with same name already exists
+      const existingResourceByName = await resourceRepository.findOne({ resource_name: data.resource_name });
+      if (existingResourceByName) {
+        throw new ConflictError('Resource with this name already exists');
+      }
+
       const resource = await resourceRepository.create({
         ...data,
         is_deleted: false,
@@ -113,6 +119,14 @@ class ResourceService {
         const existingResource = await resourceRepository.findByEmail(data.email);
         if (existingResource) {
           throw new ConflictError('Email already in use');
+        }
+      }
+
+      // Check if name is being changed and if it's already taken
+      if (data.resource_name && data.resource_name !== resource.resource_name) {
+        const existingResourceByName = await resourceRepository.findOne({ resource_name: data.resource_name });
+        if (existingResourceByName) {
+          throw new ConflictError('Resource name already in use');
         }
       }
 

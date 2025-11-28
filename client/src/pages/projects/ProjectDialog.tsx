@@ -254,7 +254,13 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
                 <Label htmlFor="project_name">Project Name *</Label>
                 <Input
                   id="project_name"
-                  {...register('project_name', { required: 'Project name is required' })}
+                  {...register('project_name', { 
+                    required: 'Project name is required',
+                    pattern: {
+                      value: /^[A-Za-z].*[A-Za-z]/,
+                      message: 'Project name must start with a letter and contain at least one letter'
+                    }
+                  })}
                   placeholder="Enter project name"
                 />
                 {errors.project_name && (

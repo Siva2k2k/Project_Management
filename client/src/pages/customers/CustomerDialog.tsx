@@ -87,7 +87,13 @@ export function CustomerDialog({ open, onOpenChange, customer, onSuccess }: Cust
               </Label>
               <Input
                 id="customer_name"
-                {...register('customer_name', { required: 'Customer name is required' })}
+                {...register('customer_name', { 
+                  required: 'Customer name is required',
+                  pattern: {
+                    value: /^[A-Za-z].*[A-Za-z]/,
+                    message: 'Customer name must start with a letter and contain at least one letter'
+                  }
+                })}
                 placeholder="Enter customer name"
               />
               {errors.customer_name && (

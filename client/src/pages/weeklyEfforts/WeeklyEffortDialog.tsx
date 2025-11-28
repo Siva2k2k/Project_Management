@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { SimpleDialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
+import { Calendar } from '../../components/ui/Calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/Popover';
+import { cn } from '../../lib/utils';
 import weeklyEffortService from '../../services/weeklyEffortService';
 import weeklyMetricsService from '../../services/weeklyMetricsService';
 import resourceService from '../../services/resourceService';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
-import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString } from '../../lib/dateUtils';
+import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString, formatDate } from '../../lib/dateUtils';
 
 interface ResourceEffortEntry {
   resource: string;
@@ -39,6 +42,11 @@ interface WeeklyEffortDialogProps {
   } | null;
 }
 
+// Cache resources globally to avoid repeated API calls
+let cachedResources: any[] | null = null;
+let resourcesCacheTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
 export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject, prefilledWeek, editMode }: WeeklyEffortDialogProps) {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -57,6 +65,7 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   const [isCurrentWeek, setIsCurrentWeek] = useState(true);
   const [isPrefilledWeek, setIsPrefilledWeek] = useState(false);
   const [projectCurrentScope, setProjectCurrentScope] = useState<number | null>(null);
+  const [existingDates, setExistingDates] = useState<Set<string>>(new Set());
 
   const {
     register,
@@ -71,57 +80,87 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   const selectedProject = watch('project');
 
   useEffect(() => {
-    if (open) {
-      fetchProjects();
+    const initializeDialog = async () => {
+      if (open) {
+        // Start loading projects in parallel (non-blocking)
+        const projectsPromise = fetchProjects();
 
-      if (editMode) {
-        // Edit mode - load existing efforts and metrics
-        loadExistingData(editMode.projectId, editMode.weekStartDate);
+        if (editMode) {
+          // Edit mode - load existing efforts and metrics
+          // Wait for projects to load, then load existing data
+          await projectsPromise;
+          loadExistingData(editMode.projectId, editMode.weekStartDate);
+        } else {
+          // Create mode - use prefilled data or defaults
+          const currentWeek = getCurrentWeekRange();
+          const weekStart = prefilledWeek?.start || '';
+          const weekEnd = prefilledWeek?.end || '';
+          
+          // Check if this is a prefilled week (current or previous)
+          setIsPrefilledWeek(!!prefilledWeek);
+          
+          // Check if custom week mode (no prefilled week - always past week) or current week
+          if (!prefilledWeek) {
+            setIsCurrentWeek(false); // Custom mode is for past weeks only
+          } else if (prefilledWeek.start === currentWeek.start) {
+            setIsCurrentWeek(true);
+          } else {
+            setIsCurrentWeek(false);
+          }
+          
+          // Load project data if prefilled project is provided
+          if (prefilledProject) {
+            console.log('Dialog opened with prefilled project:', prefilledProject);
+            setLoading(true);
+            
+            // Wait for projects to load, then initialize form and resources
+            Promise.all([
+              projectsPromise,
+              loadProjectDataAndResources(prefilledProject)
+            ]).then(() => {
+              // Initialize form values after projects are loaded to ensure dropdown shows correct project
+              reset({
+                project: prefilledProject,
+                week_start_date: weekStart,
+                week_end_date: weekEnd,
+                scope_completed: 0,
+                comments: '',
+              });
+            }).finally(() => {
+              setLoading(false);
+            });
+          } else {
+            console.log('Dialog opened without prefilled project');
+            // Initialize form immediately for non-prefilled case
+            reset({
+              project: '',
+              week_start_date: weekStart,
+              week_end_date: weekEnd,
+              scope_completed: 0,
+              comments: '',
+            });
+            
+            setProjectCurrentScope(null);
+            setResources([]);
+            setResourceEntries([{ resource: '', hours: 0 }]);
+            setLoading(true);
+            projectsPromise.finally(() => {
+              setLoading(false);
+            });
+          }
+          
+          setExistingMetricsId(null);
+          setExistingEffortIds(new Map());
+        }
       } else {
-        // Create mode - use prefilled data or defaults
-        const currentWeek = getCurrentWeekRange();
-        const weekStart = prefilledWeek?.start || '';
-        const weekEnd = prefilledWeek?.end || '';
-        
-        // Check if this is a prefilled week (current or previous)
-        setIsPrefilledWeek(!!prefilledWeek);
-        
-        // Check if custom week mode (no prefilled week - always past week) or current week
-        if (!prefilledWeek) {
-          setIsCurrentWeek(false); // Custom mode is for past weeks only
-        } else if (prefilledWeek.start === currentWeek.start) {
-          setIsCurrentWeek(true);
-        } else {
-          setIsCurrentWeek(false);
-        }
-        
-        // Load project resources if prefilled project is provided
-        if (prefilledProject) {
-          fetchProjectScope(prefilledProject);
-          loadProjectResources(prefilledProject);
-        } else {
-          setProjectCurrentScope(null);
-          setResources([]);
-          setResourceEntries([{ resource: '', hours: 0 }]);
-        }
-
-        reset({
-          project: prefilledProject || '',
-          week_start_date: weekStart,
-          week_end_date: weekEnd,
-          scope_completed: 0,
-          comments: '',
-        });
-        
-        setExistingMetricsId(null);
-        setExistingEffortIds(new Map());
+        // Cleanup when dialog closes
+        setResources([]);
+        setResourceEntries([{ resource: '', hours: 0 }]);
+        setProjectCurrentScope(null);
       }
-    } else {
-      // Cleanup when dialog closes
-      setResources([]);
-      setResourceEntries([{ resource: '', hours: 0 }]);
-      setProjectCurrentScope(null);
-    }
+    };
+
+    initializeDialog();
   }, [open, editMode, prefilledProject, prefilledWeek, reset]);
 
   // Auto-calculate week_end_date when week_start_date changes
@@ -138,52 +177,83 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     }
   }, [weekStartDate, editMode, setValue, isPrefilledWeek]);
 
-  // Populate resources from selected project (only when user manually selects, not when prefilled)
+  // Populate resources from selected project (when user manually selects project)
   useEffect(() => {
-    if (selectedProject && !editMode && !prefilledProject && open) {
-      loadProjectResources(selectedProject);
+    if (selectedProject && !editMode && open) {
+      // Only load resources if user manually selected a different project
+      // or if no prefilled project was provided
+      if (!prefilledProject || selectedProject !== prefilledProject) {
+        loadProjectDataAndResources(selectedProject);
+      }
     }
   }, [selectedProject, editMode, prefilledProject, open]);
+
+  // Fetch existing dates for validation
+  useEffect(() => {
+    const fetchExistingDates = async () => {
+      if (!selectedProject || editMode || isPrefilledWeek) return;
+
+      try {
+        // Fetch existing metrics for the project
+        const response = await weeklyMetricsService.getByProject(selectedProject, { limit: 100 });
+        const dates = new Set<string>(response.data.map((m: any) => m.week_start_date.split('T')[0]));
+        setExistingDates(dates);
+      } catch (error) {
+        console.error('Failed to fetch existing dates:', error);
+      }
+    };
+
+    fetchExistingDates();
+  }, [selectedProject, editMode, isPrefilledWeek]);
 
   const fetchProjects = async () => {
     try {
       const response = await projectService.getAll({ limit: 100 });
-      setProjects(response.data);
+      setProjects(response.data || []);
+      console.log('Projects loaded:', response.data?.length || 0, 'projects');
     } catch (error) {
       console.error('Failed to fetch projects:', error);
+      setProjects([]);
     }
   };
 
-  const fetchProjectScope = async (projectId: string) => {
-    try {
-      const projectResponse = await projectService.getById(projectId);
-      
-      if (projectResponse) {
-        setProjectCurrentScope(projectResponse.scope_completed || 0);
-      } else {
-        setProjectCurrentScope(null);
-      }
-    } catch (error) {
-      console.error('Failed to fetch project scope:', error);
+
+
+  // Get cached resources or fetch them if cache is expired
+  const getCachedResources = async () => {
+    const now = Date.now();
+    if (cachedResources && (now - resourcesCacheTime < CACHE_DURATION)) {
+      return cachedResources;
+    }
+    
+    const freshResources = await resourceService.getActive();
+    cachedResources = freshResources || [];
+    resourcesCacheTime = now;
+    return cachedResources;
+  };
+
+  // Optimized function that loads project data and resources in parallel with a single project API call
+  const loadProjectDataAndResources = async (projectId: string) => {
+    if (!projectId) {
       setProjectCurrentScope(null);
+      setResources([]);
+      setResourceEntries([{ resource: '', hours: 0 }]);
+      return;
     }
-  };
 
-  const loadProjectResources = async (projectId: string) => {
     try {
-      // Load all active resources from Resource collection (not just project-specific)
-      // This allows any resource to contribute to the project
-      const allResources = await resourceService.getActive();
-      setResources(allResources);
+      // Load resources and project details in parallel, using cache for resources
+      const [allResources, projectResponse] = await Promise.all([
+        getCachedResources(),
+        projectService.getById(projectId)
+      ]);
 
-      // Load project details to get assigned resources for pre-population
-      const projectResponse = await projectService.getById(projectId);
+      // Set resources immediately
+      setResources(allResources || []);
       
       if (projectResponse) {
-        // Set project scope if available
-        if (projectResponse.scope_completed !== undefined) {
-          setProjectCurrentScope(projectResponse.scope_completed);
-        }
+        // Set project scope
+        setProjectCurrentScope(projectResponse.scope_completed || 0);
         
         // Pre-populate resource entries with project's assigned resources
         if (projectResponse.resources && projectResponse.resources.length > 0) {
@@ -196,9 +266,14 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
           // No resources assigned to project, keep default empty entry
           setResourceEntries([{ resource: '', hours: 0 }]);
         }
+      } else {
+        // Project not found
+        setProjectCurrentScope(null);
+        setResourceEntries([{ resource: '', hours: 0 }]);
       }
     } catch (error) {
-      console.error('Failed to load resources:', error);
+      console.error('Failed to load project data and resources:', projectId, error);
+      setProjectCurrentScope(null);
       setResources([]);
       setResourceEntries([{ resource: '', hours: 0 }]);
     }
@@ -208,34 +283,32 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     try {
       setLoading(true);
 
-      // Load project resources first to populate the dropdown options
-      await loadProjectResources(projectId);
-
-      // Fetch weekly metrics for this project and week
-      const metricsResponse = await weeklyMetricsService.getAll({
-        project: projectId,
-        week_start_date: weekStartDate,
-        limit: 1,
-      });
-
-      // Fetch weekly efforts for this project and week
-      const effortsResponse = await weeklyEffortService.getAll({
-        project: projectId,
-        week_start_date: weekStartDate,
-        limit: 100,
-      });
+      // Load project data, metrics, and efforts in parallel for faster loading
+      const [, metricsResponse, effortsResponse] = await Promise.all([
+        loadProjectDataAndResources(projectId),
+        weeklyMetricsService.getAll({
+          project: projectId,
+          week_start_date: weekStartDate,
+          limit: 1,
+        }),
+        weeklyEffortService.getAll({
+          project: projectId,
+          week_start_date: weekStartDate,
+          limit: 100,
+        })
+      ]);
 
       const metrics = metricsResponse.data[0];
       const efforts = effortsResponse.data;
 
       if (metrics) {
         setExistingMetricsId(metrics._id);
-        
+
         // Check if this is the current week
         const currentWeek = getCurrentWeekRange();
         const isEditingCurrentWeek = metrics.week_start_date.split('T')[0] === currentWeek.start;
         setIsCurrentWeek(isEditingCurrentWeek);
-        
+
         reset({
           project: projectId,
           week_start_date: formatDateForInput(metrics.week_start_date),
@@ -245,6 +318,7 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
         });
       }
 
+      let resourceEntriesCreated = 0;
       if (efforts && efforts.length > 0) {
         const effortMap = new Map<string, string>();
         const entries = efforts
@@ -258,9 +332,19 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
           });
         setResourceEntries(entries);
         setExistingEffortIds(effortMap);
+        resourceEntriesCreated = entries.length;
       } else {
         setResourceEntries([{ resource: '', hours: 0 }]);
+        resourceEntriesCreated = 1;
       }
+
+      console.log('Edit mode loaded successfully:', {
+        projectId,
+        weekStartDate,
+        metricsFound: !!metrics,
+        effortsCount: efforts?.length || 0,
+        resourceEntriesCreated
+      });
     } catch (error) {
       console.error('Failed to load existing data:', error);
       alert('Failed to load existing data');
@@ -626,15 +710,57 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <Label htmlFor="week_start_date">Week Start Date (Monday) *</Label>
-                <Input
-                  id="week_start_date"
-                  type="date"
-                  {...register('week_start_date', { required: 'Week start date is required' })}
-                  onChange={handleWeekStartDateChange}
-                  disabled={!!editMode || isPrefilledWeek}
-                  max={!editMode && !isPrefilledWeek ? getMaxSelectableDate() : undefined}
-                  className={editMode || isPrefilledWeek ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}
-                />
+                {!editMode && !isPrefilledWeek ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !weekStartDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {weekStartDate ? formatDate(weekStartDate) : <span>Pick a week</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        selected={weekStartDate ? new Date(weekStartDate) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setValue('week_start_date', toISODateString(date));
+                          }
+                        }}
+                        disabled={(date) => {
+                          // Disable if not Monday
+                          if (date.getDay() !== 1) return true;
+                          
+                          // Disable if future (after previous week start)
+                          // getMaxSelectableDate returns string YYYY-MM-DD.
+                          const dateStr = toISODateString(date);
+                          if (dateStr > getMaxSelectableDate()) return true;
+
+                          // Disable if already exists
+                          if (existingDates.has(dateStr)) return true;
+
+                          return false;
+                        }}
+                        initialMonth={weekStartDate ? new Date(weekStartDate) : new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Input
+                    id="week_start_date"
+                    type="date"
+                    {...register('week_start_date', { required: 'Week start date is required' })}
+                    onChange={handleWeekStartDateChange}
+                    disabled={!!editMode || isPrefilledWeek}
+                    max={!editMode && !isPrefilledWeek ? getMaxSelectableDate() : undefined}
+                    className={editMode || isPrefilledWeek ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}
+                  />
+                )}
                 {errors.week_start_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.week_start_date.message}</p>
                 )}

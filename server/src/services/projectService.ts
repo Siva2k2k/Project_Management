@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { projectRepository, auditLogRepository, PaginatedResult } from '../dbrepo';
 import {
   NotFoundError,
+  ConflictError,
   ValidationError,
   InternalError,
 } from '../utils/errors';
@@ -24,6 +25,12 @@ class ProjectService {
       // Validate dates
       if (new Date(data.end_date) <= new Date(data.start_date)) {
         throw new ValidationError('End date must be after start date');
+      }
+
+      // Check if project with same name already exists
+      const existingProject = await projectRepository.findOne({ project_name: data.project_name });
+      if (existingProject) {
+        throw new ConflictError('Project with this name already exists');
       }
 
       const project = await projectRepository.create({
@@ -111,6 +118,14 @@ class ProjectService {
 
       if (endDate <= startDate) {
         throw new ValidationError('End date must be after start date');
+      }
+
+      // Check if name is being changed and if it's already taken
+      if (data.project_name && data.project_name !== project.project_name) {
+        const existingProject = await projectRepository.findOne({ project_name: data.project_name });
+        if (existingProject) {
+          throw new ConflictError('Project name already in use');
+        }
       }
 
       const previousData = project.toObject();

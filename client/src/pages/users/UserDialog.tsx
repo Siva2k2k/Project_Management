@@ -65,6 +65,23 @@ export function UserDialog({ open, onClose, onSuccess, user }: UserDialogProps) 
       return;
     }
 
+    // Validate name format
+    if (!/^[A-Za-z]/.test(formData.name)) {
+      setError('Name must start with a letter');
+      return;
+    }
+
+    if (!/[A-Za-z]/.test(formData.name)) {
+      setError('Name must contain at least one letter');
+      return;
+    }
+
+    // Validate email format
+    if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     if (!user && !formData.password) {
       setError('Password is required for new users');
       return;

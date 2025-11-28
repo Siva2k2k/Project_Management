@@ -105,7 +105,13 @@ export function ResourceDialog({ open, onOpenChange, resource, onSuccess }: Reso
               </Label>
               <Input
                 id="resource_name"
-                {...register('resource_name', { required: 'Resource name is required' })}
+                {...register('resource_name', { 
+                  required: 'Resource name is required',
+                  pattern: {
+                    value: /^[A-Za-z].*[A-Za-z]/,
+                    message: 'Resource name must start with a letter and contain at least one letter'
+                  }
+                })}
                 placeholder="Enter resource name"
               />
               {errors.resource_name && (

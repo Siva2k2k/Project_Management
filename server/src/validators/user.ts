@@ -5,6 +5,8 @@ export const updateProfileSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name cannot exceed 100 characters')
+    .regex(/^[A-Za-z]/, 'Name must start with a letter')
+    .regex(/[A-Za-z]/, 'Name must contain at least one letter')
     .trim()
     .optional(),
   email: z
@@ -45,6 +47,8 @@ export const createUserSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name cannot exceed 100 characters')
+    .regex(/^[A-Za-z]/, 'Name must start with a letter')
+    .regex(/[A-Za-z]/, 'Name must contain at least one letter')
     .trim(),
   email: z
     .string()

@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { ResourceStatus, Currency } from '../types';
 
 export const createResourceSchema = z.object({
-  resource_name: z.string().trim().max(100, 'Resource name cannot exceed 100 characters'),
+  resource_name: z.string().trim().max(100, 'Resource name cannot exceed 100 characters')
+    .regex(/^[A-Za-z]/, 'Resource name must start with a letter')
+    .regex(/[A-Za-z]/, 'Resource name must contain at least one letter'),
   email: z.string().email('Please enter a valid email').toLowerCase().trim(),
   status: z.nativeEnum(ResourceStatus).default(ResourceStatus.ACTIVE),
   per_hour_rate: z.number().min(0, 'Per hour rate cannot be negative'),
@@ -10,7 +12,9 @@ export const createResourceSchema = z.object({
 });
 
 export const updateResourceSchema = z.object({
-  resource_name: z.string().trim().max(100, 'Resource name cannot exceed 100 characters').optional(),
+  resource_name: z.string().trim().max(100, 'Resource name cannot exceed 100 characters')
+    .regex(/^[A-Za-z]/, 'Resource name must start with a letter')
+    .regex(/[A-Za-z]/, 'Resource name must contain at least one letter').optional(),
   email: z.string().email('Please enter a valid email').toLowerCase().trim().optional(),
   status: z.nativeEnum(ResourceStatus).optional(),
   per_hour_rate: z.number().min(0, 'Per hour rate cannot be negative').optional(),

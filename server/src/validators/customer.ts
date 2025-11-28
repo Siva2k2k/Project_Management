@@ -1,13 +1,17 @@
 import { z } from 'zod';
 
 export const createCustomerSchema = z.object({
-  customer_name: z.string().trim().max(200, 'Customer name cannot exceed 200 characters'),
+  customer_name: z.string().trim().max(200, 'Customer name cannot exceed 200 characters')
+    .regex(/^[A-Za-z]/, 'Customer name must start with a letter')
+    .regex(/[A-Za-z]/, 'Customer name must contain at least one letter'),
   email: z.string().email('Please enter a valid email').toLowerCase().trim(),
   contact_info: z.string().trim().max(500, 'Contact info cannot exceed 500 characters').optional(),
 });
 
 export const updateCustomerSchema = z.object({
-  customer_name: z.string().trim().max(200, 'Customer name cannot exceed 200 characters').optional(),
+  customer_name: z.string().trim().max(200, 'Customer name cannot exceed 200 characters')
+    .regex(/^[A-Za-z]/, 'Customer name must start with a letter')
+    .regex(/[A-Za-z]/, 'Customer name must contain at least one letter').optional(),
   email: z.string().email('Please enter a valid email').toLowerCase().trim().optional(),
   contact_info: z.string().trim().max(500, 'Contact info cannot exceed 500 characters').optional(),
 });
