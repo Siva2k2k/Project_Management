@@ -95,11 +95,14 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
           setIsCurrentWeek(false);
         }
         
-        // Fetch project's current scope if creating entry with prefilled project
+        // Load project resources if prefilled project is provided
         if (prefilledProject) {
           fetchProjectScope(prefilledProject);
+          loadProjectResources(prefilledProject);
         } else {
           setProjectCurrentScope(null);
+          setResources([]);
+          setResourceEntries([{ resource: '', hours: 0 }]);
         }
 
         reset({
@@ -109,10 +112,15 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
           scope_completed: 0,
           comments: '',
         });
-        setResourceEntries([{ resource: '', hours: 0 }]);
+        
         setExistingMetricsId(null);
         setExistingEffortIds(new Map());
       }
+    } else {
+      // Cleanup when dialog closes
+      setResources([]);
+      setResourceEntries([{ resource: '', hours: 0 }]);
+      setProjectCurrentScope(null);
     }
   }, [open, editMode, prefilledProject, prefilledWeek, reset]);
 
@@ -130,12 +138,12 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
     }
   }, [weekStartDate, editMode, setValue, isPrefilledWeek]);
 
-  // Populate resources from selected project
+  // Populate resources from selected project (only when user manually selects, not when prefilled)
   useEffect(() => {
-    if (selectedProject && !editMode) {
+    if (selectedProject && !editMode && !prefilledProject && open) {
       loadProjectResources(selectedProject);
     }
-  }, [selectedProject, editMode]);
+  }, [selectedProject, editMode, prefilledProject, open]);
 
   const fetchProjects = async () => {
     try {
@@ -163,6 +171,12 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
 
   const loadProjectResources = async (projectId: string) => {
     try {
+      // Load all active resources from Resource collection (not just project-specific)
+      // This allows any resource to contribute to the project
+      const allResources = await resourceService.getActive();
+      setResources(allResources);
+
+      // Load project details to get assigned resources for pre-population
       const projectResponse = await projectService.getById(projectId);
       
       if (projectResponse) {
@@ -171,23 +185,20 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
           setProjectCurrentScope(projectResponse.scope_completed);
         }
         
-        // Load project-specific resources into the resources dropdown
+        // Pre-populate resource entries with project's assigned resources
         if (projectResponse.resources && projectResponse.resources.length > 0) {
-          setResources(projectResponse.resources);
-          // Populate resource entries with project's assigned resources
           const entries = projectResponse.resources.map((resource: any) => ({
             resource: resource._id,
             hours: 0,
           }));
           setResourceEntries(entries);
         } else {
-          // No resources assigned to project, clear resources and keep default empty entry
-          setResources([]);
+          // No resources assigned to project, keep default empty entry
           setResourceEntries([{ resource: '', hours: 0 }]);
         }
       }
     } catch (error) {
-      console.error('Failed to load project resources:', error);
+      console.error('Failed to load resources:', error);
       setResources([]);
       setResourceEntries([{ resource: '', hours: 0 }]);
     }
@@ -196,6 +207,9 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   const loadExistingData = async (projectId: string, weekStartDate: string) => {
     try {
       setLoading(true);
+
+      // Load project resources first to populate the dropdown options
+      await loadProjectResources(projectId);
 
       // Fetch weekly metrics for this project and week
       const metricsResponse = await weeklyMetricsService.getAll({
