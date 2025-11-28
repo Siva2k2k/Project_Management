@@ -13,21 +13,48 @@ import {
 } from 'recharts';
 import { dashboardService } from '../../services/dashboardService';
 import type { TrendData } from '../../services/dashboardService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/Select';
+import { X } from 'lucide-react';
+
+interface ProjectOption {
+  _id: string;
+  project_name: string;
+  customer?: { customer_name: string };
+}
 
 export function TrendsDashboard() {
   const [data, setData] = useState<TrendData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<number>(30);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProjectList();
+    fetchData();
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [timeRange]);
+  }, [timeRange, selectedProject]);
+
+  const fetchProjectList = async () => {
+    try {
+      const projectList = await dashboardService.getProjectList();
+      setProjects(projectList);
+    } catch (err: any) {
+      console.error('Failed to load project list:', err);
+    }
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const result = await dashboardService.getTrends({ timeRange });
+      const result = await dashboardService.getTrends({ 
+        timeRange, 
+        projectId: selectedProject || undefined 
+      });
       setData(result);
       setError(null);
     } catch (err: any) {
@@ -35,6 +62,14 @@ export function TrendsDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+  };
+
+  const clearProjectSelection = () => {
+    setSelectedProject(null);
   };
 
   if (loading) {
@@ -58,25 +93,63 @@ export function TrendsDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between pl-16 lg:pl-0">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Trends Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Track project trends over time
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Time Range:</label>
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={60}>Last 60 days</option>
-            <option value={90}>Last 90 days</option>
-          </select>
+      <div className="pl-16 lg:pl-0">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Trends Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {selectedProject ? 'Project-Specific' : 'Overall'} trends over time
+            </p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Project Selection Dropdown */}
+            <div className="flex items-center gap-2 min-w-0">
+              <Select value={selectedProject || ''} onValueChange={handleProjectChange}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Select a project for specific trends" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project._id} value={project._id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{project.project_name}</span>
+                        {project.customer && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {project.customer.customer_name}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedProject && (
+                <button
+                  onClick={clearProjectSelection}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                  title="Clear selection to view overall trends"
+                >
+                  <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              )}
+            </div>
+
+            {/* Time Range Selection */}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Time Range:</label>
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={7}>Last 7 days</option>
+                <option value={30}>Last 30 days</option>
+                <option value={60}>Last 60 days</option>
+                <option value={90}>Last 90 days</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -90,7 +163,7 @@ export function TrendsDashboard() {
             {data.effortTrend.reduce((sum, item) => sum + item.hours, 0).toLocaleString()} hrs
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Across all projects
+            {selectedProject ? 'For selected project' : 'Across all projects'}
           </p>
         </div>
 
