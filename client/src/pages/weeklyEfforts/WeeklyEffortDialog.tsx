@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { SimpleDialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
+import { Calendar } from '../../components/ui/Calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/Popover';
+import { cn } from '../../lib/utils';
 import weeklyEffortService from '../../services/weeklyEffortService';
 import weeklyMetricsService from '../../services/weeklyMetricsService';
 import resourceService from '../../services/resourceService';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
-import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString } from '../../lib/dateUtils';
+import { getCurrentWeekRange, getPreviousWeekRange, calculateEndDate, formatDateForInput, toISODateString, formatDate } from '../../lib/dateUtils';
 
 interface ResourceEffortEntry {
   resource: string;
@@ -57,6 +60,7 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
   const [isCurrentWeek, setIsCurrentWeek] = useState(true);
   const [isPrefilledWeek, setIsPrefilledWeek] = useState(false);
   const [projectCurrentScope, setProjectCurrentScope] = useState<number | null>(null);
+  const [existingDates, setExistingDates] = useState<Set<string>>(new Set());
 
   const {
     register,
@@ -136,6 +140,24 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
       loadProjectResources(selectedProject);
     }
   }, [selectedProject, editMode]);
+
+  // Fetch existing dates for validation
+  useEffect(() => {
+    const fetchExistingDates = async () => {
+      if (!selectedProject || editMode || isPrefilledWeek) return;
+
+      try {
+        // Fetch existing metrics for the project
+        const response = await weeklyMetricsService.getByProject(selectedProject, { limit: 100 });
+        const dates = new Set(response.data.map((m: any) => m.week_start_date.split('T')[0]));
+        setExistingDates(dates);
+      } catch (error) {
+        console.error('Failed to fetch existing dates:', error);
+      }
+    };
+
+    fetchExistingDates();
+  }, [selectedProject, editMode, isPrefilledWeek]);
 
   const fetchProjects = async () => {
     try {
@@ -627,15 +649,57 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <Label htmlFor="week_start_date">Week Start Date (Monday) *</Label>
-                <Input
-                  id="week_start_date"
-                  type="date"
-                  {...register('week_start_date', { required: 'Week start date is required' })}
-                  onChange={handleWeekStartDateChange}
-                  disabled={!!editMode || isPrefilledWeek}
-                  max={!editMode && !isPrefilledWeek ? getMaxSelectableDate() : undefined}
-                  className={editMode || isPrefilledWeek ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}
-                />
+                {!editMode && !isPrefilledWeek ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !weekStartDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {weekStartDate ? formatDate(weekStartDate) : <span>Pick a week</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        selected={weekStartDate ? new Date(weekStartDate) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setValue('week_start_date', toISODateString(date));
+                          }
+                        }}
+                        disabled={(date) => {
+                          // Disable if not Monday
+                          if (date.getDay() !== 1) return true;
+                          
+                          // Disable if future (after previous week start)
+                          // getMaxSelectableDate returns string YYYY-MM-DD.
+                          const dateStr = toISODateString(date);
+                          if (dateStr > getMaxSelectableDate()) return true;
+
+                          // Disable if already exists
+                          if (existingDates.has(dateStr)) return true;
+
+                          return false;
+                        }}
+                        initialMonth={weekStartDate ? new Date(weekStartDate) : new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Input
+                    id="week_start_date"
+                    type="date"
+                    {...register('week_start_date', { required: 'Week start date is required' })}
+                    onChange={handleWeekStartDateChange}
+                    disabled={!!editMode || isPrefilledWeek}
+                    max={!editMode && !isPrefilledWeek ? getMaxSelectableDate() : undefined}
+                    className={editMode || isPrefilledWeek ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}
+                  />
+                )}
                 {errors.week_start_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.week_start_date.message}</p>
                 )}

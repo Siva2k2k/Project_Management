@@ -1,498 +1,585 @@
-import { useEffect, useState } from 'react';
-import { Plus, ChevronRight, ChevronDown } from 'lucide-react';
-import weeklyEffortService from '../../services/weeklyEffortService';
-import projectService from '../../services/projectService';
-import type { Project } from '../../services/projectService';
+import { useEffect, useState, useMemo } from 'react';
+import { Eye, Edit2, Plus, Calendar, DollarSign, Clock, Target, Activity, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Pagination } from '../../components/ui/Pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/Select';
 import { WeeklyEffortDialog } from './WeeklyEffortDialog';
+import { ResourceBreakdownDialog } from './ResourceBreakdownDialog';
+import projectService, { type Project } from '../../services/projectService';
+import weeklyMetricsService, { type WeeklyMetrics } from '../../services/weeklyMetricsService';
+import weeklyEffortService from '../../services/weeklyEffortService';
+import { getCurrentWeekRange, getPreviousWeekRange, formatDate } from '../../lib/dateUtils';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
-import { getCurrentWeekRange, getPreviousWeekRange, formatDate } from '../../lib/dateUtils';
-
-interface ProjectWeekData {
-  project: Project;
-  currentWeekData: any[];
-  previousWeekData: any[];
-  hasCurrentWeekData: boolean;
-  hasPreviousWeekData: boolean;
-}
 
 export function WeeklyEffortsList() {
   const { user } = useAuth();
-  const [projectsData, setProjectsData] = useState<ProjectWeekData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedWeek, setSelectedWeek] = useState<{ start: string; end: string } | null>(null);
-  const [editMode, setEditMode] = useState<{ projectId: string; weekStartDate: string; weekEndDate: string } | null>(null);
-  const [currentWeekStart, setCurrentWeekStart] = useState('');
-  const [currentWeekEnd, setCurrentWeekEnd] = useState('');
-  const [previousWeekStart, setPreviousWeekStart] = useState('');
-  const [previousWeekEnd, setPreviousWeekEnd] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalProjects, setTotalProjects] = useState(0);
-  const limit = 6;
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [metrics, setMetrics] = useState<WeeklyMetrics[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [resourceCounts, setResourceCounts] = useState<{ [key: string]: number }>({});
+  
+  // Dialog states
+  const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
+  const [isBreakdownDialogOpen, setIsBreakdownDialogOpen] = useState(false);
+  const [dialogProps, setDialogProps] = useState<{
+    prefilledProject?: string;
+    prefilledWeek?: { start: string; end: string } | null;
+    editMode?: { projectId: string; weekStartDate: string; weekEndDate: string } | null;
+  }>({});
+  const [breakdownProps, setBreakdownProps] = useState<{
+    projectId: string;
+    weekStartDate: string;
+    weekEndDate: string;
+    projectName: string;
+  } | null>(null);
+
+  // Current/Previous week ranges
+  const currentWeek = useMemo(() => getCurrentWeekRange(), []);
+  const previousWeek = useMemo(() => getPreviousWeekRange(), []);
 
   useEffect(() => {
-    calculateWeeks();
+    fetchProjects();
   }, []);
 
   useEffect(() => {
-    if (currentWeekStart) {
-      fetchProjectsData();
+    if (selectedProjectId) {
+      fetchProjectMetrics(selectedProjectId);
+    } else {
+      setMetrics([]);
     }
-  }, [currentWeekStart, page]);
+  }, [selectedProjectId]);
 
-  const calculateWeeks = () => {
-    const currentWeek = getCurrentWeekRange();
-    const previousWeek = getPreviousWeekRange();
-
-    setCurrentWeekStart(currentWeek.start);
-    setCurrentWeekEnd(currentWeek.end);
-    setPreviousWeekStart(previousWeek.start);
-    setPreviousWeekEnd(previousWeek.end);
-  };
-
-  const fetchProjectsData = async () => {
+  const fetchProjects = async () => {
     try {
       setLoading(true);
-
-      // Fetch projects - filter by manager if user is a Manager
-      const params: any = { page, limit };
-      
-      // Managers can only see their own projects
+      const params: any = { limit: 100 };
       if (user?.role === UserRole.MANAGER) {
         params.assigned_manager = user._id;
       }
-
-      const projectsResponse = await projectService.getAll(params);
-      const projects = projectsResponse.data;
-      setTotalProjects(projectsResponse.total);
-      console.log('Fetched projects:', projects.length);
-
-      // Fetch weekly efforts for current and previous weeks
-      const currentWeekEfforts = await weeklyEffortService.getAll({
-        week_start_date: currentWeekStart,
-        limit: 1000,
-      });
-      console.log('Current week efforts:', currentWeekEfforts.data.length, currentWeekEfforts.data);
-
-      const previousWeekEfforts = await weeklyEffortService.getAll({
-        week_start_date: previousWeekStart,
-        limit: 1000,
-      });
-      console.log('Previous week efforts:', previousWeekEfforts.data.length, previousWeekEfforts.data);
-
-      // Organize data by project
-      const projectsData: ProjectWeekData[] = projects.map((project) => {
-        const currentWeekData = currentWeekEfforts.data.filter((e: any) => {
-          if (!e.project) return false; // Skip if project is null
-          const projectId = typeof e.project === 'object' ? e.project?._id : e.project;
-          return projectId && (projectId === project._id || projectId.toString() === project._id.toString());
-        });
-        const previousWeekData = previousWeekEfforts.data.filter((e: any) => {
-          if (!e.project) return false; // Skip if project is null
-          const projectId = typeof e.project === 'object' ? e.project?._id : e.project;
-          return projectId && (projectId === project._id || projectId.toString() === project._id.toString());
-        });
-
-        return {
-          project,
-          currentWeekData,
-          previousWeekData,
-          hasCurrentWeekData: currentWeekData.length > 0,
-          hasPreviousWeekData: previousWeekData.length > 0,
-        };
-      });
-
-      console.log('Processed projects data:', projectsData);
-      setProjectsData(projectsData);
+      const response = await projectService.getAll(params);
+      setProjects(response.data);
+      
+      // Select first project by default if available
+      if (response.data.length > 0) {
+        setSelectedProjectId(response.data[0]._id);
+      }
     } catch (error) {
-      console.error('Failed to fetch projects data:', error);
-      alert('Failed to fetch weekly efforts data. Check console for details.');
+      console.error('Failed to fetch projects:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddWeeklyEffort = (project: Project, weekStart: string, weekEnd: string) => {
-    setSelectedProject(project);
-    setSelectedWeek({ start: weekStart, end: weekEnd });
-    setEditMode(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleAddCustomWeekEntry = (project: Project) => {
-    setSelectedProject(project);
-    setSelectedWeek(null); // No prefilled week for custom entry
-    setEditMode(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleEditWeeklyEffort = (projectId: string, weekStart: string, weekEnd: string) => {
-    setEditMode({
-      projectId,
-      weekStartDate: weekStart,
-      weekEndDate: weekEnd,
-    });
-    setSelectedProject(null);
-    setSelectedWeek(null);
-    setIsDialogOpen(true);
-  };
-
-  const toggleProject = (projectId: string) => {
-    const newExpanded = new Set(expandedProjects);
-    if (newExpanded.has(projectId)) {
-      newExpanded.delete(projectId);
-    } else {
-      newExpanded.add(projectId);
+  const fetchProjectMetrics = async (projectId: string) => {
+    try {
+      setMetricsLoading(true);
+      const response = await weeklyMetricsService.getByProject(projectId, {
+        limit: 100,
+        sort: 'week_start_date',
+        order: 'desc'
+      });
+      setMetrics(response.data);
+    } catch (error) {
+      console.error('Failed to fetch metrics:', error);
+    } finally {
+      setMetricsLoading(false);
     }
-    setExpandedProjects(newExpanded);
   };
 
-  const formatWeekRange = (start: string, end: string) => {
-    return `${formatDate(start)} - ${formatDate(end)}`;
+  const selectedProject = useMemo(() => 
+    projects.find(p => p._id === selectedProjectId), 
+    [projects, selectedProjectId]
+  );
+
+  // Group metrics
+  const { currentWeekMetric, previousWeekMetric, pastMetrics } = useMemo<{
+    currentWeekMetric: WeeklyMetrics | null;
+    previousWeekMetric: WeeklyMetrics | null;
+    pastMetrics: WeeklyMetrics[];
+  }>(() => {
+    let current: WeeklyMetrics | null = null;
+    let previous: WeeklyMetrics | null = null;
+    const past: WeeklyMetrics[] = [];
+
+    metrics.forEach(m => {
+      // Compare dates (using simple string comparison as they are ISO dates)
+      // We need to be careful with timezones, but usually these are YYYY-MM-DD
+      const metricStart = m.week_start_date.split('T')[0];
+      const currentStart = currentWeek.start.split('T')[0];
+      const previousStart = previousWeek.start.split('T')[0];
+
+      if (metricStart === currentStart) {
+        current = m;
+      } else if (metricStart === previousStart) {
+        previous = m;
+      } else {
+        past.push(m);
+      }
+    });
+
+    return { currentWeekMetric: current, previousWeekMetric: previous, pastMetrics: past };
+  }, [metrics, currentWeek, previousWeek]);
+
+  // Calculate Summary Cards
+  const summary = useMemo(() => {
+    if (!selectedProject) return null;
+
+    const totalEffort = metrics.reduce((sum, m) => sum + (m.rollup_hours || 0), 0);
+    const hourlyRate = selectedProject.hourly_rate || 0;
+    const actualCost = totalEffort * hourlyRate;
+    
+    // Duration calculation
+    const start = new Date(selectedProject.start_date);
+    const end = new Date(selectedProject.end_date);
+    const durationMs = end.getTime() - start.getTime();
+    const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
+    const durationWeeks = Math.ceil(durationDays / 7);
+
+    return {
+      scopeCompleted: selectedProject.scope_completed || 0,
+      totalEffort,
+      actualCost,
+      duration: `${durationWeeks} Weeks (${durationDays} Days)`
+    };
+  }, [selectedProject, metrics]);
+
+  // Handlers
+  const handleAddEntry = (weekType: 'current' | 'previous' | 'past') => {
+    if (!selectedProjectId) return;
+
+    let week = null;
+    if (weekType === 'current') week = currentWeek;
+    if (weekType === 'previous') week = previousWeek;
+
+    setDialogProps({
+      prefilledProject: selectedProjectId,
+      prefilledWeek: week,
+      editMode: null
+    });
+    setIsEntryDialogOpen(true);
   };
 
-  const getTotalHours = (weekData: any[]) => {
-    return weekData.reduce((sum, entry) => sum + entry.hours, 0);
+  const handleEditEntry = (metric: WeeklyMetrics) => {
+    setDialogProps({
+      editMode: {
+        projectId: typeof metric.project === 'object' ? metric.project._id : metric.project,
+        weekStartDate: metric.week_start_date,
+        weekEndDate: metric.week_end_date
+      }
+    });
+    setIsEntryDialogOpen(true);
   };
+
+  const handleViewBreakdown = (metric: WeeklyMetrics) => {
+    if (!selectedProject) return;
+    setBreakdownProps({
+      projectId: selectedProject._id,
+      projectName: selectedProject.project_name,
+      weekStartDate: metric.week_start_date,
+      weekEndDate: metric.week_end_date
+    });
+    setIsBreakdownDialogOpen(true);
+  };
+
+  const handleDialogSuccess = () => {
+    setIsEntryDialogOpen(false);
+    if (selectedProjectId) {
+      fetchProjectMetrics(selectedProjectId);
+      // Also refresh project details to update scope if changed
+      fetchProjects(); 
+    }
+  };
+
+  useEffect(() => {
+    const fetchResourceCounts = async () => {
+      const counts: { [key: string]: number } = {};
+      
+      if (currentWeekMetric && selectedProjectId) {
+        try {
+          const response = await weeklyEffortService.getAll({
+            project: selectedProjectId,
+            week_start_date: currentWeekMetric.week_start_date,
+            limit: 100
+          });
+          counts[currentWeekMetric.week_start_date] = response.data.length;
+        } catch (err) {
+          console.error("Error fetching current week efforts", err);
+        }
+      }
+
+      if (previousWeekMetric && selectedProjectId) {
+        try {
+          const response = await weeklyEffortService.getAll({
+            project: selectedProjectId,
+            week_start_date: previousWeekMetric.week_start_date,
+            limit: 100
+          });
+          counts[previousWeekMetric.week_start_date] = response.data.length;
+        } catch (err) {
+          console.error("Error fetching previous week efforts", err);
+        }
+      }
+      
+      setResourceCounts(prev => ({ ...prev, ...counts }));
+    };
+
+    fetchResourceCounts();
+  }, [currentWeekMetric, previousWeekMetric, selectedProjectId]);
+
+  if (loading && projects.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between pl-16 lg:pl-0">
+    <div className="space-y-8 p-6 max-w-7xl mx-auto">
+      {/* Header & Project Selector */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Weekly Efforts</h1>
-          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
-            Track weekly progress for all projects
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Weekly Efforts</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Track and manage project progress</p>
+        </div>
+        <div className="w-full md:w-72">
+          <label className="block text-sm font-bold text-black-700 dark:text-gray-300 mb-2">
+            Selected Project
+          </label>
+          <Select
+            value={selectedProjectId}
+            onValueChange={setSelectedProjectId}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a Project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map(p => (
+                <SelectItem key={p._id} value={p._id}>{p.project_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Week Info */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 md:p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-          <div>
-            <p className="text-xs md:text-sm font-medium text-blue-900 dark:text-blue-300">Current Week</p>
-            <p className="text-sm md:text-lg font-semibold text-blue-700 dark:text-blue-400">
-              {currentWeekStart && formatWeekRange(currentWeekStart, currentWeekEnd)}
-            </p>
+      {selectedProject && summary ? (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Scope Completed</h3>
+                <Target className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="flex items-baseline">
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">{summary.scopeCompleted}%</span>
+                <span className="ml-2 text-sm text-gray-500">of total scope</span>
+              </div>
+              <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                <div 
+                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(summary.scopeCompleted, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Effort</h3>
+                <Activity className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="flex items-baseline">
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">{summary.totalEffort}</span>
+                <span className="ml-2 text-sm text-gray-500">hours</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Actual Cost</h3>
+                <DollarSign className="h-5 w-5 text-amber-500" />
+              </div>
+              <div className="flex items-baseline">
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  ${summary.actualCost.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</h3>
+                <Clock className="h-5 w-5 text-purple-500" />
+              </div>
+              <div className="flex items-baseline">
+                <span className="text-xl font-bold text-gray-900 dark:text-white">{summary.duration}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs md:text-sm font-medium text-blue-900 dark:text-blue-300">Previous Week</p>
-            <p className="text-sm md:text-lg font-semibold text-blue-700 dark:text-blue-400">
-              {previousWeekStart && formatWeekRange(previousWeekStart, previousWeekEnd)}
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Projects List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : projectsData.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">No projects found</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {projectsData.map((data) => {
-              const isExpanded = expandedProjects.has(data.project._id);
-
-              return (
-                <div key={data.project._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  {/* Project Header Row */}
-                  <div className="px-3 md:px-6 py-3 md:py-4">
-                    {/* Desktop Layout */}
-                    <div className="hidden md:flex items-center justify-between">
-                      <div className="flex items-center space-x-3 flex-1">
-                        <button
-                          onClick={() => toggleProject(data.project._id)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="w-5 h-5" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5" />
-                          )}
-                        </button>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {data.project.project_name}
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {data.project.customer?.customer_name || 'Unknown Customer'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-4">
-                        {/* Current Week Status */}
-                        <div className="text-center min-w-[200px]">
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                            Current Week
-                          </p>
-                          {data.hasCurrentWeekData ? (
-                            <button
-                              onClick={() => handleEditWeeklyEffort(data.project._id, currentWeekStart, currentWeekEnd)}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors cursor-pointer"
-                              title="Click to edit"
-                            >
-                              {data.currentWeekData.length} entries • {getTotalHours(data.currentWeekData)} hrs
-                            </button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddWeeklyEffort(data.project, currentWeekStart, currentWeekEnd)}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add Entry
-                            </Button>
-                          )}
-                        </div>
-
-                        {/* Previous Week Status */}
-                        <div className="text-center min-w-[200px]">
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                            Previous Week
-                          </p>
-                          {data.hasPreviousWeekData ? (
-                            <button
-                              onClick={() => handleEditWeeklyEffort(data.project._id, previousWeekStart, previousWeekEnd)}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-                              title="Click to edit"
-                            >
-                              {data.previousWeekData.length} entries • {getTotalHours(data.previousWeekData)} hrs
-                            </button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAddWeeklyEffort(data.project, previousWeekStart, previousWeekEnd)}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add Entry
-                            </Button>
-                          )}
-                        </div>
-
-                        {/* Add Custom Week Entry Button */}
-                        <div className="text-center min-w-[200px]">
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                            Past Weeks
-                          </p>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddCustomWeekEntry(data.project)}
-                            className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                            title="Add entry for any past week"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Mobile Layout */}
-                    <div className="md:hidden space-y-3">
-                      {/* Project Info */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-2 flex-1">
-                          <button
-                            onClick={() => toggleProject(data.project._id)}
-                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-1"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                              {data.project.project_name}
-                            </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              {data.project.customer?.customer_name || 'Unknown Customer'}
-                            </p>
-                          </div>
-                        </div>
-                        {/* Add Custom Week Button */}
-                        <button
-                          onClick={() => handleAddCustomWeekEntry(data.project)}
-                          className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex-shrink-0"
-                          title="Add entry for any past week"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      {/* Week Entries - Stacked */}
-                      <div className="space-y-2">
-                        {/* Current Week */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                            Current Week
-                          </p>
-                          {data.hasCurrentWeekData ? (
-                            <button
-                              onClick={() => handleEditWeeklyEffort(data.project._id, currentWeekStart, currentWeekEnd)}
-                              className="w-full inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors"
-                            >
-                              {data.currentWeekData.length} entries • {getTotalHours(data.currentWeekData)} hrs
-                            </button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="w-full text-xs"
-                              onClick={() => handleAddWeeklyEffort(data.project, currentWeekStart, currentWeekEnd)}
-                            >
-                              <Plus className="w-3 h-3 mr-1" />
-                              Add Entry
-                            </Button>
-                          )}
-                        </div>
-
-                        {/* Previous Week */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                            Previous Week
-                          </p>
-                          {data.hasPreviousWeekData ? (
-                            <button
-                              onClick={() => handleEditWeeklyEffort(data.project._id, previousWeekStart, previousWeekEnd)}
-                              className="w-full inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                            >
-                              {data.previousWeekData.length} entries • {getTotalHours(data.previousWeekData)} hrs
-                            </button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full text-xs"
-                              onClick={() => handleAddWeeklyEffort(data.project, previousWeekStart, previousWeekEnd)}
-                            >
-                              <Plus className="w-3 h-3 mr-1" />
-                              Add Entry
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-4 justify-center md:justify-start bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+            {currentWeekMetric ? (
+               <div className="bg-white dark:bg-gray-800 px-3 py-2 h-[52px] rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3 shadow-sm">
+                  <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+                    <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Current Week</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {resourceCounts[currentWeekMetric.week_start_date] || 0} Res
+                      </span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">•</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {currentWeekMetric.rollup_hours} Hrs
+                      </span>
                     </div>
                   </div>
+               </div>
+            ) : (
+              <Button 
+                onClick={() => handleAddEntry('current')}
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md h-[52px]"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Current Week Entry
+              </Button>
+            )}
 
-                  {/* Expanded Details */}
-                  {isExpanded && (
-                    <div className="px-3 md:px-6 pb-3 md:pb-4 bg-gray-50 dark:bg-gray-800/50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                        {/* Current Week Details */}
-                        <div>
-                          <h4 className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 md:mb-3">
-                            Current Week Details
-                          </h4>
-                          {data.currentWeekData.length > 0 ? (
-                            <div className="space-y-2">
-                              {data.currentWeekData.map((entry: any) => (
-                                <div
-                                  key={entry._id}
-                                  className="bg-white dark:bg-gray-800 rounded-lg p-2 md:p-3 border border-gray-200 dark:border-gray-700"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                      {typeof entry.resource === 'object' ? (entry.resource?.resource_name || 'Deleted Resource') : 'Unknown Resource'}
-                                    </span>
-                                    <span className="text-xs md:text-sm font-semibold text-blue-600 dark:text-blue-400 ml-2">
-                                      {entry.hours} hrs
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 italic">
-                              No entries for this week
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Previous Week Details */}
-                        <div>
-                          <h4 className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 md:mb-3">
-                            Previous Week Details
-                          </h4>
-                          {data.previousWeekData.length > 0 ? (
-                            <div className="space-y-2">
-                              {data.previousWeekData.map((entry: any) => (
-                                <div
-                                  key={entry._id}
-                                  className="bg-white dark:bg-gray-800 rounded-lg p-2 md:p-3 border border-gray-200 dark:border-gray-700"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                      {typeof entry.resource === 'object' ? (entry.resource?.resource_name || 'Deleted Resource') : 'Unknown Resource'}
-                                    </span>
-                                    <span className="text-xs md:text-sm font-semibold text-blue-600 dark:text-blue-400 ml-2">
-                                      {entry.hours} hrs
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 italic">
-                              No entries for this week
-                            </p>
-                          )}
-                        </div>
-                      </div>
+            {previousWeekMetric ? (
+               <div className="bg-white dark:bg-gray-800 px-3 py-2 h-[52px] rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3 shadow-sm">
+                  <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+                    <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Previous Week</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {resourceCounts[previousWeekMetric.week_start_date] || 0} Res
+                      </span>
+                      <span className="text-xs text-gray-300 dark:text-gray-600">•</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {previousWeekMetric.rollup_hours} Hrs
+                      </span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        
-        {/* Pagination */}
-        {!loading && projectsData.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-            <Pagination
-              currentPage={page}
-              totalPages={Math.ceil(totalProjects / limit)}
-              totalItems={totalProjects}
-              itemsPerPage={limit}
-              onPageChange={setPage}
-            />
-          </div>
-        )}
-      </div>
+                  </div>
+               </div>
+            ) : (
+              <Button 
+                variant="outline"
+                onClick={() => handleAddEntry('previous')}
+                className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 h-[52px]"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Previous Week Entry
+              </Button>
+            )}
 
-      {/* Create/Edit Dialog */}
+            <Button 
+              variant="outline"
+              onClick={() => handleAddEntry('past')}
+              className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 h-[52px]"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Past Weeks Entry
+            </Button>
+          </div>
+
+          {/* Weekly Efforts Table */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Week</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">End Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Scope %</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comment</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {metricsLoading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                          Loading metrics...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : metrics.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                        No weekly efforts recorded yet. Start by adding an entry.
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {/* Current Week Row */}
+                      {currentWeekMetric && (
+                        <tr className="bg-blue-50/50 dark:bg-blue-900/10">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-2">
+                                Current
+                              </span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {formatDate(currentWeekMetric.week_start_date)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(currentWeekMetric.week_end_date)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">{currentWeekMetric.scope_completed}%</span>
+                              <div className="ml-2 w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                <div 
+                                  className="bg-blue-500 h-1 rounded-full" 
+                                  style={{ width: `${Math.min(currentWeekMetric.scope_completed, 100)}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                            {currentWeekMetric.comments || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end space-x-2">
+                              <Button size="sm" variant="ghost" onClick={() => handleViewBreakdown(currentWeekMetric)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleEditEntry(currentWeekMetric)}>
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* Previous Week Row */}
+                      {previousWeekMetric && (
+                        <tr className="bg-gray-50/50 dark:bg-gray-800/50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 mr-2">
+                                Previous
+                              </span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {formatDate(previousWeekMetric.week_start_date)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(previousWeekMetric.week_end_date)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">{previousWeekMetric.scope_completed}%</span>
+                              <div className="ml-2 w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                <div 
+                                  className="bg-gray-500 h-1 rounded-full" 
+                                  style={{ width: `${Math.min(previousWeekMetric.scope_completed, 100)}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                            {previousWeekMetric.comments || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end space-x-2">
+                              <Button size="sm" variant="ghost" onClick={() => handleViewBreakdown(previousWeekMetric)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleEditEntry(previousWeekMetric)}>
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* Past Weeks Rows */}
+                      {pastMetrics.map((metric) => (
+                        <tr key={metric._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {formatDate(metric.week_start_date)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(metric.week_end_date)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">{metric.scope_completed}%</span>
+                              <div className="ml-2 w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                <div 
+                                  className="bg-gray-400 h-1 rounded-full" 
+                                  style={{ width: `${Math.min(metric.scope_completed, 100)}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                            {metric.comments || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end space-x-2">
+                              <Button size="sm" variant="ghost" onClick={() => handleViewBreakdown(metric)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleEditEntry(metric)}>
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="mx-auto h-12 w-12 text-gray-400">
+            <Activity className="h-12 w-12" />
+          </div>
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Project Selected</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Select a project from the dropdown to view weekly efforts.</p>
+        </div>
+      )}
+
+      {/* Dialogs */}
       <WeeklyEffortDialog
-        open={isDialogOpen}
-        onClose={() => {
-          setIsDialogOpen(false);
-          setSelectedProject(null);
-          setSelectedWeek(null);
-          setEditMode(null);
-        }}
-        onSuccess={() => {
-          setIsDialogOpen(false);
-          setSelectedProject(null);
-          setSelectedWeek(null);
-          setEditMode(null);
-          fetchProjectsData();
-        }}
-        prefilledProject={selectedProject?._id}
-        prefilledWeek={selectedWeek}
-        editMode={editMode}
+        open={isEntryDialogOpen}
+        onClose={() => setIsEntryDialogOpen(false)}
+        onSuccess={handleDialogSuccess}
+        {...dialogProps}
       />
+
+      {breakdownProps && (
+        <ResourceBreakdownDialog
+          open={isBreakdownDialogOpen}
+          onClose={() => setIsBreakdownDialogOpen(false)}
+          {...breakdownProps}
+        />
+      )}
     </div>
   );
 }
