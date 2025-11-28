@@ -59,8 +59,9 @@ router.get(
   authorize(UserRole.MANAGER, UserRole.ADMIN, UserRole.CEO),
   async (req: AuthRequest, res, next) => {
     try {
+      const { projectId } = req.query;
       const userId = req.user!.role === UserRole.CEO || req.user!.role === UserRole.ADMIN ? undefined : req.user!._id.toString();
-      const data = await dashboardService.getKPIs(userId);
+      const data = await dashboardService.getKPIs(userId, projectId as string | undefined);
       res.json({ success: true, data });
     } catch (error) {
       next(error);
@@ -82,6 +83,22 @@ router.get(
         userId,
         parseInt(timeRange as string)
       );
+      res.json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Projects list for dropdown
+router.get(
+  '/projects-list',
+  authenticate,
+  authorize(UserRole.MANAGER, UserRole.ADMIN, UserRole.CEO),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const userId = req.user!.role === UserRole.CEO || req.user!.role === UserRole.ADMIN ? undefined : req.user!._id.toString();
+      const data = await dashboardService.getProjectsList(userId);
       res.json({ success: true, data });
     } catch (error) {
       next(error);

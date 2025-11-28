@@ -1,21 +1,44 @@
 import { useEffect, useState } from 'react';
 import { dashboardService } from '../../services/dashboardService';
 import type { KPIData } from '../../services/dashboardService';
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, DollarSign, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, DollarSign, Users, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/Select';
+
+interface ProjectOption {
+  _id: string;
+  project_name: string;
+  customer?: { customer_name: string };
+}
 
 export function KPIDashboard() {
   const [data, setData] = useState<KPIData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProjectList();
+    fetchData();
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedProject]);
+
+  const fetchProjectList = async () => {
+    try {
+      const projectList = await dashboardService.getProjectList();
+      setProjects(projectList);
+    } catch (err: any) {
+      console.error('Failed to load project list:', err);
+    }
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const result = await dashboardService.getKPIs();
+      const result = await dashboardService.getKPIs(selectedProject || undefined);
       setData(result);
       setError(null);
     } catch (err: any) {
@@ -23,6 +46,14 @@ export function KPIDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+  };
+
+  const clearProjectSelection = () => {
+    setSelectedProject(null);
   };
 
   if (loading) {
@@ -58,10 +89,46 @@ export function KPIDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="pl-16 lg:pl-0">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">KPI Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Key Performance Indicators and Metrics
-        </p>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">KPI Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {selectedProject ? 'Project-Specific' : 'Overall'} Key Performance Indicators and Metrics
+            </p>
+          </div>
+          
+          {/* Project Selection Dropdown */}
+          <div className="flex items-center gap-2 min-w-0">
+            <Select value={selectedProject || ''} onValueChange={handleProjectChange}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select a project for specific KPIs" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project._id} value={project._id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{project.project_name}</span>
+                      {project.customer && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {project.customer.customer_name}
+                        </span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedProject && (
+              <button
+                onClick={clearProjectSelection}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="Clear selection to view overall KPIs"
+              >
+                <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Project Overview */}

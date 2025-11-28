@@ -22,30 +22,66 @@ function isPopulatedProject(project: Types.ObjectId | IProjectDoc): project is I
 
 // Helper: Get hourly rate based on project configuration
 function getHourlyRate(project: IProjectDoc, resource?: IResource): number {
+  let rate: number;
+  
   switch (project.hourly_rate_source) {
     case HourlyRateSource.PROJECT:
-      return project.hourly_rate || config.organizationalHourlyRate;
+      rate = project.hourly_rate || config.organizationalHourlyRate;
+      break;
     case HourlyRateSource.RESOURCE:
-      return resource?.per_hour_rate || config.organizationalHourlyRate;
+      rate = resource?.per_hour_rate || config.organizationalHourlyRate;
+      break;
     case HourlyRateSource.ORGANIZATION:
     default:
-      return config.organizationalHourlyRate;
+      rate = config.organizationalHourlyRate;
+      break;
   }
+  
+  // Ensure we return a valid positive number
+  if (typeof rate !== 'number' || isNaN(rate) || rate < 0) {
+    return config.organizationalHourlyRate;
+  }
+  
+  return rate;
 }
 
 
 // Helper: Calculate actual cost for efforts with proper hourly rate
 async function calculateActualCost(efforts: any[], project: IProjectDoc): Promise<number> {
+  // Validate inputs
+  if (!Array.isArray(efforts) || !project) {
+    return 0;
+  }
+
   let totalCost = 0;
+  
   for (const effort of efforts) {
+    // Skip invalid effort records
+    if (!effort || typeof effort.hours !== 'number' || isNaN(effort.hours) || effort.hours < 0) {
+      continue;
+    }
+
     // Skip efforts with null/deleted resources
     if (!effort.resource) {
       continue;
     }
+
     const resource = isPopulatedResource(effort.resource) ? effort.resource : undefined;
     const hourlyRate = getHourlyRate(project, resource);
-    totalCost += effort.hours * hourlyRate;
+    
+    // Validate hourly rate
+    if (typeof hourlyRate !== 'number' || isNaN(hourlyRate) || hourlyRate < 0) {
+      continue;
+    }
+
+    const cost = effort.hours * hourlyRate;
+    
+    // Validate calculated cost
+    if (typeof cost === 'number' && !isNaN(cost)) {
+      totalCost += cost;
+    }
   }
+  
   return totalCost;
 }
 
@@ -347,13 +383,25 @@ function formatMilestones(milestones: any[]): any[] {
 
 // Helper: Calculate project statistics
 async function calculateProjectStats(efforts: any[], project: IProjectDoc) {
-  const totalEffortHours = efforts.reduce((sum, e) => sum + e.hours, 0);
+  // Validate input data
+  if (!Array.isArray(efforts)) {
+    return { totalEffortHours: 0, actualCost: 0, effortPercentage: 0, costPercentage: 0 };
+  }
+
+  const totalEffortHours = efforts.reduce((sum, e) => {
+    const hours = typeof e.hours === 'number' && !isNaN(e.hours) ? e.hours : 0;
+    return sum + hours;
+  }, 0);
+  
   const actualCost = await calculateActualCost(efforts, project);
-  const effortPercentage = project.estimated_effort > 0 
-    ? Math.round((totalEffortHours / project.estimated_effort) * 100)
+  
+  // Calculate percentages with proper mathematical precision
+  const effortPercentage = project.estimated_effort > 0 && !isNaN(project.estimated_effort)
+    ? Math.round((totalEffortHours / project.estimated_effort) * 100 * 10) / 10 // One decimal place precision
     : 0;
-  const costPercentage = project.estimated_budget > 0 
-    ? Math.round((actualCost / project.estimated_budget) * 100)
+    
+  const costPercentage = project.estimated_budget > 0 && !isNaN(project.estimated_budget)
+    ? Math.round((actualCost / project.estimated_budget) * 100 * 10) / 10 // One decimal place precision
     : 0;
 
   return { totalEffortHours, actualCost, effortPercentage, costPercentage };
@@ -421,12 +469,28 @@ function countOnTimeProjects(projects: any[]): number {
   return projects.filter((p) => {
     if (p.project_status !== ProjectStatus.COMPLETED) return false;
     
-    const completedMilestones = p.milestones.filter((m: any) => m.completed_date);
-    const onTimeMilestones = completedMilestones.filter(
-      (m: any) => m.completed_date && m.completed_date <= m.estimated_date
-    );
+    // For projects tracked by end date
+    if (p.tracking_by === 'EndDate') {
+      // Check if project was completed on or before the estimated end date
+      const endDate = new Date(p.end_date);
+      const completedDate = new Date(p.completed_date || p.last_modified_date);
+      return completedDate <= endDate;
+    }
     
-    return onTimeMilestones.length === completedMilestones.length;
+    // For projects tracked by milestones
+    if (p.milestones && p.milestones.length > 0) {
+      const completedMilestones = p.milestones.filter((m: any) => m.completed_date);
+      if (completedMilestones.length === 0) return false;
+      
+      const onTimeMilestones = completedMilestones.filter(
+        (m: any) => m.completed_date && new Date(m.completed_date) <= new Date(m.estimated_date)
+      );
+      
+      return onTimeMilestones.length === completedMilestones.length;
+    }
+    
+    // Default: if no milestones and no clear tracking, consider on-time if completed
+    return true;
   }).length;
 }
 
@@ -440,34 +504,132 @@ async function calculateBudgetAndEffortTotals(
   let totalEstimatedEffort = 0;
   let totalActualEffort = 0;
 
+  // Validate input arrays match in length
+  if (!Array.isArray(projects) || !Array.isArray(efforts) || projects.length !== efforts.length) {
+    return { totalEstimatedBudget: 0, totalActualCost: 0, totalEstimatedEffort: 0, totalActualEffort: 0 };
+  }
+
   for (let i = 0; i < projects.length; i++) {
     const p = projects[i];
-    totalEstimatedBudget += p.estimated_budget;
-    totalEstimatedEffort += p.estimated_effort;
-    const projectEfforts = efforts[i];
-    const actualHours = projectEfforts.reduce((sum, e) => sum + e.hours, 0);
+    if (!p) continue;
+
+    // Validate and accumulate estimated values
+    const estimatedBudget = typeof p.estimated_budget === 'number' && !isNaN(p.estimated_budget) ? p.estimated_budget : 0;
+    const estimatedEffort = typeof p.estimated_effort === 'number' && !isNaN(p.estimated_effort) ? p.estimated_effort : 0;
+    
+    totalEstimatedBudget += estimatedBudget;
+    totalEstimatedEffort += estimatedEffort;
+    
+    // Calculate actual values
+    const projectEfforts = Array.isArray(efforts[i]) ? efforts[i] : [];
+    const actualHours = projectEfforts.reduce((sum, e) => {
+      const hours = typeof e?.hours === 'number' && !isNaN(e.hours) ? e.hours : 0;
+      return sum + hours;
+    }, 0);
+    
     totalActualEffort += actualHours;
+    
     const cost = await calculateActualCost(projectEfforts, p);
-    totalActualCost += cost;
+    totalActualCost += (typeof cost === 'number' && !isNaN(cost) ? cost : 0);
   }
 
   return { totalEstimatedBudget, totalActualCost, totalEstimatedEffort, totalActualEffort };
 }
 
-// Helper: Calculate variance percentage
+// Helper: Calculate variance percentage with proper mathematical validation
 function calculateVariance(actual: number, estimated: number): number {
-  return estimated > 0 ? ((actual - estimated) / estimated) * 100 : 0;
+  // Ensure both values are valid numbers
+  if (typeof actual !== 'number' || typeof estimated !== 'number' || isNaN(actual) || isNaN(estimated)) {
+    return 0;
+  }
+  
+  // If estimated is zero or negative, handle edge cases
+  if (estimated <= 0) {
+    // If both are zero, no variance
+    if (actual === 0) return 0;
+    // If estimated is zero but actual is not, return 100% over (or under if negative)
+    return actual > 0 ? 100 : -100;
+  }
+  
+  // Standard variance calculation: ((actual - estimated) / estimated) * 100
+  const variance = ((actual - estimated) / estimated) * 100;
+  
+  // Ensure the result is a valid number
+  return isNaN(variance) ? 0 : variance;
 }
 
-// Helper: Calculate average resource utilization
-function calculateResourceUtilization(resourceData: any[]): number {
-  if (resourceData.length === 0) return 0;
-  const totalHours = resourceData.reduce((sum, r) => sum + r.total_hours, 0);
-  return totalHours / resourceData.length / 40; // Assuming 40 hours/week
+// Helper: Calculate resource utilization based on actual project timeframes and effort data
+async function calculateResourceUtilization(projectIds: string[]): Promise<number> {
+  if (projectIds.length === 0) return 0;
+  
+  // Get all weekly effort records for the projects to calculate precise utilization
+  const allEfforts = [];
+  for (const projectId of projectIds) {
+    const projectEfforts = await projectWeeklyEffortRepository.findAllByProject(projectId);
+    allEfforts.push(...projectEfforts);
+  }
+  
+  if (allEfforts.length === 0) return 0;
+  
+  // Group efforts by resource and week to get accurate weekly hour distribution
+  const resourceWeeklyHours = new Map<string, Map<string, number>>();
+  
+  for (const effort of allEfforts) {
+    const resourceId = effort.resource?._id?.toString() || 'unknown';
+    const weekKey = effort.week_start_date.toISOString().split('T')[0];
+    
+    if (!resourceWeeklyHours.has(resourceId)) {
+      resourceWeeklyHours.set(resourceId, new Map());
+    }
+    
+    const resourceWeeks = resourceWeeklyHours.get(resourceId)!;
+    resourceWeeks.set(weekKey, (resourceWeeks.get(weekKey) || 0) + effort.hours);
+  }
+  
+  // Calculate utilization per resource based on their actual weekly patterns
+  let totalUtilizationSum = 0;
+  let resourceCount = 0;
+  
+  for (const [, weeklyHours] of resourceWeeklyHours) {
+    if (weeklyHours.size === 0) continue;
+    
+    // Calculate average weekly hours for this resource
+    const totalHours = Array.from(weeklyHours.values()).reduce((sum, hours) => sum + hours, 0);
+    const avgWeeklyHours = totalHours / weeklyHours.size;
+    
+    // Calculate utilization based on actual peak capacity observed for this resource
+    const maxWeeklyHours = Math.max(...Array.from(weeklyHours.values()));
+    
+    // If the resource has consistent hours, use max as capacity
+    // If there's high variation, use statistical approach to determine realistic capacity
+    const hoursArray = Array.from(weeklyHours.values());
+    hoursArray.sort((a, b) => b - a); // Sort descending
+    
+    // Use 80th percentile as realistic capacity (removes outliers/overtime weeks)
+    const percentile80Index = Math.floor(hoursArray.length * 0.2);
+    const realisticCapacity = hoursArray.length > 2 ? hoursArray[percentile80Index] : maxWeeklyHours;
+    
+    // Calculate utilization as average vs realistic capacity (0-1 range)
+    const utilization = realisticCapacity > 0 ? Math.min(avgWeeklyHours / realisticCapacity, 1) : 0;
+    
+    totalUtilizationSum += utilization;
+    resourceCount++;
+  }
+  
+  return resourceCount > 0 ? totalUtilizationSum / resourceCount : 0;
 }
 
-export async function getKPIs(userId?: string) {
-  const projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
+export async function getKPIs(userId?: string, projectId?: string) {
+  let projects;
+  
+  if (projectId) {
+    // Get specific project
+    const project = await projectRepository.findById(projectId);
+    projects = project ? [project] : [];
+  } else {
+    // Get all projects based on user role
+    projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
+  }
 
   const totalProjects = projects.length;
   const completedProjects = projects.filter((p) => p.project_status === ProjectStatus.COMPLETED).length;
@@ -486,8 +648,7 @@ export async function getKPIs(userId?: string) {
     ? (projects.filter((p) => p.overall_status === 'Green').length / projects.length) * 100
     : 0;
 
-  const resourceData = await projectWeeklyEffortRepository.getResourceAllocation(projectIds);
-  const avgUtilization = calculateResourceUtilization(resourceData);
+  const avgUtilization = await calculateResourceUtilization(projectIds);
 
   return {
     totalProjects,
@@ -561,4 +722,14 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
     budgetTrend,
     scopeTrend,
   };
+}
+
+export async function getProjectsList(userId?: string) {
+  const projects = userId ? await projectRepository.findByManager(userId) : await projectRepository.findAll();
+  
+  return projects.map(project => ({
+    _id: project._id,
+    project_name: project.project_name,
+    customer: project.customer
+  }));
 }

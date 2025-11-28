@@ -81,13 +81,19 @@ export const dashboardService = {
     return response.data.data;
   },
 
-  async getKPIs(): Promise<KPIData> {
-    const response = await api.get('/dashboard/kpis');
+  async getKPIs(projectId?: string): Promise<KPIData> {
+    const params = projectId ? { projectId } : {};
+    const response = await api.get('/dashboard/kpis', { params });
     return response.data.data;
   },
 
   async getTrends(params?: { projectId?: string; timeRange?: number }): Promise<TrendData> {
     const response = await api.get('/dashboard/trends', { params });
+    return response.data.data;
+  },
+
+  async getProjectList(): Promise<Array<{ _id: string; project_name: string; customer?: { customer_name: string } }>> {
+    const response = await api.get('/dashboard/projects-list');
     return response.data.data;
   },
 };
