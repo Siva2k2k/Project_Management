@@ -266,20 +266,65 @@ export function ProjectDetails() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Duration</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
-                {formatDate(project.start_date)}
-              </p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {formatDate(project.end_date)}
-              </p>
+        <div className="relative group">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-help">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                {(() => {
+                  const startDate = new Date(project.start_date);
+                  const endDate = new Date(project.end_date);
+                  const currentDate = new Date();
+                  
+                  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const elapsedDays = Math.max(0, Math.ceil((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+                  const elapsedPercentage = Math.min((elapsedDays / totalDays) * 100, 100);
+                  
+                  return (
+                    <>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Duration Progress</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                        {elapsedPercentage.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {elapsedDays} of {totalDays} days
+                      </p>
+                      <div className="mt-3 relative">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                          <div
+                            className="bg-orange-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${elapsedPercentage}%` }}
+                          />
+                        </div>
+                        {/* Current date indicator */}
+                        <div 
+                          className="absolute top-0 transform -translate-x-1/2"
+                          style={{ left: `${Math.min(elapsedPercentage, 100)}%` }}
+                        >
+                          <div className="w-0.5 h-4 bg-red-500 relative">
+                            <div className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+          </div>
+          
+          {/* Tooltip */}
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+            <div className="text-center">
+              <div className="font-medium mb-1">Project Timeline</div>
+              <div>Start: {formatDate(project.start_date)}</div>
+              <div>End: {formatDate(project.end_date)}</div>
+              <div>Today: {formatDate(new Date().toISOString())}</div>
             </div>
+            {/* Tooltip arrow */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
           </div>
         </div>
       </div>
@@ -342,21 +387,67 @@ export function ProjectDetails() {
           <LineChart
             data={(() => {
               const byWeek = drillDownData.effortByResource || [];
-              const result: { week: string; hours: number }[] = [];
-              for (const row of byWeek) {
-                const weekLabel = row.week;
-                const sum = Object.keys(row)
+              const result: { week: string; hours: number; [key: string]: any }[] = [];
+              
+              // Convert cumulative data to weekly data
+              for (let i = 0; i < byWeek.length; i++) {
+                const currentRow = byWeek[i];
+                const previousRow = i > 0 ? byWeek[i - 1] : null;
+                const weekLabel = currentRow.week;
+                
+                const resourceBreakdown: { week: string; hours: number; [key: string]: any } = { 
+                  week: weekLabel, 
+                  hours: 0 
+                };
+                
+                let weeklyTotal = 0;
+                Object.keys(currentRow)
                   .filter((k) => k !== 'week')
-                  .reduce((s, k) => s + (Number(row[k]) || 0), 0);
-                result.push({ week: weekLabel, hours: sum });
+                  .forEach(resourceName => {
+                    const currentHours = Number(currentRow[resourceName]) || 0;
+                    const previousHours = previousRow ? (Number(previousRow[resourceName]) || 0) : 0;
+                    const weeklyHours = currentHours - previousHours; // Calculate actual weekly hours
+                    
+                    resourceBreakdown[resourceName] = weeklyHours;
+                    weeklyTotal += weeklyHours;
+                  });
+                
+                resourceBreakdown.hours = weeklyTotal;
+                result.push(resourceBreakdown);
               }
+              
               return result;
             })()}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="week" stroke="#9ca3af" />
             <YAxis stroke="#9ca3af" />
-            <Tooltip formatter={(value: any) => `${value.toLocaleString()} hrs`} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <Tooltip 
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length > 0) {
+                  const data = payload[0].payload;
+                  const resources = Object.keys(data).filter(k => k !== 'week' && k !== 'hours');
+                  
+                  return (
+                    <div className="bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-lg">
+                      <p className="text-white font-medium mb-2">{`Week: ${label}`}</p>
+                      <p className="text-white mb-2">{`Total Hours: ${data.hours.toLocaleString()}`}</p>
+                      {resources.length > 0 && (
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium mb-1">Resource Breakdown:</p>
+                          {resources.map(resource => (
+                            <p key={resource} className="text-gray-300 text-sm">
+                              {resource}: {data[resource].toLocaleString()} hrs
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
             <Legend wrapperStyle={{ color: '#9ca3af' }} />
             <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={2} name="Weekly Hours" />
           </LineChart>

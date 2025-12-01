@@ -42,7 +42,11 @@ export interface KPIData {
 }
 
 export interface TrendData {
-  effortTrend: Array<{ date: string; hours: number }>;
+  effortTrend: Array<{ 
+    date: string; 
+    hours: number; 
+    breakdown?: { [key: string]: number }; // Resource breakdown for project-specific, project breakdown for all projects
+  }>;
   budgetTrend: Array<{ date: string; cost: number }>;
   scopeTrend: Array<{ date: string; scope_completed: number; project: string }>;
 }

@@ -273,7 +273,10 @@ export function TrendsDashboard() {
           Weekly Effort Trend
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Total hours logged by all resources over time
+          {selectedProject 
+            ? 'Hours logged by resources in selected project over time'
+            : 'Total hours logged by all resources across all projects over time'
+          }
         </p>
         <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={data.effortTrend}>
@@ -286,7 +289,35 @@ export function TrendsDashboard() {
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="date" stroke="#9ca3af" />
             <YAxis stroke="#9ca3af" />
-            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+            <Tooltip 
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length > 0) {
+                  const data = payload[0].payload;
+                  const breakdown = data.breakdown || {};
+                  const breakdownKeys = Object.keys(breakdown);
+                  
+                  return (
+                    <div className="bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-lg">
+                      <p className="text-white font-medium mb-2">{`Date: ${label}`}</p>
+                      <p className="text-white mb-2">{`Total Hours: ${data.hours.toLocaleString()}`}</p>
+                      {breakdownKeys.length > 0 && (
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium mb-1">
+                            {selectedProject ? 'Resource Breakdown:' : 'Project Breakdown:'}
+                          </p>
+                          {breakdownKeys.map(key => (
+                            <p key={key} className="text-gray-300 text-sm">
+                              {key}: {breakdown[key].toLocaleString()} hrs
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
             <Legend wrapperStyle={{ color: '#9ca3af' }} />
             <Area
               type="monotone"

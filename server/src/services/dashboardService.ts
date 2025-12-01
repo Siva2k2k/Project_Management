@@ -715,11 +715,44 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
     projectIds = projects.map((p) => p._id.toString());
   }
 
-  const effortData = await projectWeeklyEffortRepository.getEffortByWeek(projectIds, startDate);
-  const effortTrend = effortData.map((e) => ({
-    date: toISODateString(e.week_start_date),
-    hours: e.total_hours,
-  }));
+  // Get detailed effort data for both total and breakdown - use single source of truth
+  const detailedEfforts = await Promise.all(projectIds.map((id) => projectWeeklyEffortRepository.findAllByProject(id)));
+  const allDetailedEfforts = detailedEfforts.flat().filter((e) => new Date(e.week_start_date) >= startDate);
+  
+  // Group by week for both totals and breakdown
+  const effortByWeek = new Map<string, { hours: number; breakdown: Map<string, number> }>();
+  
+  for (const effort of allDetailedEfforts) {
+    const weekKey = toISODateString(effort.week_start_date);
+    const current = effortByWeek.get(weekKey) || { hours: 0, breakdown: new Map() };
+    
+    current.hours += effort.hours;
+    
+    if (projectId) {
+      // For single project: show resource breakdown
+      const resourceName = isPopulatedResource(effort.resource) 
+        ? effort.resource.resource_name 
+        : 'Unknown Resource';
+      current.breakdown.set(resourceName, (current.breakdown.get(resourceName) || 0) + effort.hours);
+    } else {
+      // For all projects: show project breakdown
+      const projectName = isPopulatedProject(effort.project) 
+        ? effort.project.project_name 
+        : 'Unknown Project';
+      current.breakdown.set(projectName, (current.breakdown.get(projectName) || 0) + effort.hours);
+    }
+    
+    effortByWeek.set(weekKey, current);
+  }
+  
+  // Convert to array and sort by date
+  const effortTrend = Array.from(effortByWeek.entries())
+    .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+    .map(([date, data]) => ({
+      date,
+      hours: data.hours,
+      breakdown: Object.fromEntries(data.breakdown),
+    }));
 
   // Budget burn-down - fetch projects to get hourly rate configuration
   const projectsData = await Promise.all(projectIds.map((id) => projectRepository.findByIdWithPopulate(id)));
