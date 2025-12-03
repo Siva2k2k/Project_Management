@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye } from 'lucide-react';
-import { auditLogService } from '../../services';
+import { Search, Eye, Filter, X } from 'lucide-react';
+import { auditLogService, projectService } from '../../services';
 import type { AuditLog } from '../../types';
+import type { Project } from '../../services/projectService';
 import {
   Button,
   Input,
@@ -25,16 +26,46 @@ export function AuditLogsList() {
     open: false,
     auditLog: null,
   });
+  
+  // Filter states
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const limit = 10;
+
+  const fetchProjects = async () => {
+    try {
+      const response = await projectService.getAll();
+      setProjects(response.data);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+    }
+  };
 
   const fetchAuditLogs = async () => {
     try {
       setLoading(true);
-      const response = await auditLogService.getAll({
+      const params: any = {
         page,
         limit,
-      });
+      };
+
+      // Add filters if set
+      if (selectedProjectId) {
+        params.entity_type = 'Project';
+        params.entity_id = selectedProjectId;
+      }
+      if (startDate) {
+        params.start_date = startDate;
+      }
+      if (endDate) {
+        params.end_date = endDate;
+      }
+
+      const response = await auditLogService.getAll(params);
       setAuditLogs(response.data);
       setTotal(response.pagination.total);
     } catch (error) {
@@ -45,8 +76,12 @@ export function AuditLogsList() {
   };
 
   useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
     fetchAuditLogs();
-  }, [page]);
+  }, [page, selectedProjectId, startDate, endDate]);
 
   const handleView = (auditLog: AuditLog) => {
     setViewDialog({ open: true, auditLog });
@@ -76,6 +111,15 @@ export function AuditLogsList() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSelectedProjectId('');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = selectedProjectId || startDate || endDate;
+
   const filteredLogs = search
     ? auditLogs.filter(
         (log) =>
@@ -94,16 +138,140 @@ export function AuditLogsList() {
         </p>
       </div>
 
-      <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-        <div className="relative flex-1 sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search by entity, modifier, or action..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="relative flex-1 sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by entity, modifier, or action..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className="sm:w-auto"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-blue-600 rounded-full">
+                {(selectedProjectId ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0)}
+              </span>
+            )}
+          </Button>
         </div>
+
+        {showFilters && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Project
+                </label>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => {
+                    setSelectedProjectId(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Projects</option>
+                  {projects.map((project) => (
+                    <option key={project._id} value={project._id}>
+                      {project.project_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Start Date
+                </label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  End Date
+                </label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {selectedProjectId && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      Project: {projects.find(p => p._id === selectedProjectId)?.project_name}
+                      <button
+                        onClick={() => {
+                          setSelectedProjectId('');
+                          setPage(1);
+                        }}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                  {startDate && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      From: {startDate}
+                      <button
+                        onClick={() => {
+                          setStartDate('');
+                          setPage(1);
+                        }}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                  {endDate && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      To: {endDate}
+                      <button
+                        onClick={() => {
+                          setEndDate('');
+                          setPage(1);
+                        }}
+                        className="ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                  Clear All
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -138,7 +306,7 @@ export function AuditLogsList() {
                           <div>
                             <div className="font-medium text-gray-900 dark:text-white">{log.entity_type}</div>
                             <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                              ID: {log.entity_id}
+                              {log.entity_name || `ID: ${log.entity_id}`}
                             </div>
                           </div>
                         </TableCell>

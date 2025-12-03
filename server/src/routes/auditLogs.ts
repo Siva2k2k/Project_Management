@@ -32,41 +32,42 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const entityType = req.query.entity_type as string;
-    const action = req.query.action as string;
-    const userId = req.query.user_id as string;
-    const startDate = req.query.start_date as string;
-    const endDate = req.query.end_date as string;
-
-    let result;
-
-    // Apply filters based on query parameters
-    if (entityType && req.query.entity_id) {
-      result = await auditLogRepository.findByEntity(
-        entityType,
-        req.query.entity_id as string,
-        { page, limit }
-      );
-    } else if (userId) {
-      result = await auditLogRepository.findByUser(userId, { page, limit });
-    } else if (action) {
-      result = await auditLogRepository.findByAction(action as any, {
-        page,
-        limit,
-      });
-    } else if (startDate && endDate) {
-      result = await auditLogRepository.findByDateRange(
-        new Date(startDate),
-        new Date(endDate),
-        { page, limit }
-      );
-    } else {
-      // Get all audit logs with pagination
-      result = await auditLogRepository.findAllWithPagination({ page, limit });
+    
+    // Build filters object
+    const filters: any = {};
+    
+    if (req.query.entity_type) {
+      filters.entityType = req.query.entity_type as string;
+    }
+    
+    if (req.query.entity_id) {
+      filters.entityId = req.query.entity_id as string;
+    }
+    
+    if (req.query.action) {
+      filters.action = req.query.action as string;
+    }
+    
+    if (req.query.user_id) {
+      filters.userId = req.query.user_id as string;
+    }
+    
+    if (req.query.start_date) {
+      filters.startDate = new Date(req.query.start_date as string);
+    }
+    
+    if (req.query.end_date) {
+      filters.endDate = new Date(req.query.end_date as string);
     }
 
+    // Use the new findWithFilters method that supports multiple filters
+    const result = await auditLogRepository.findWithFilters(filters, { page, limit });
+
+    // Enrich with entity names
+    const enrichedData = await auditLogRepository.enrichWithEntityNames(result.data);
+
     res.json({
-      data: result.data,
+      data: enrichedData,
       pagination: {
         total: result.total,
         page: result.page,

@@ -375,48 +375,44 @@ Adjusted deliverables:
     console.log('   ✓ Project created successfully');
     console.log(`   Project ID: ${project._id}`);
 
-    // Generate 12 weeks of data starting from August 1, 2025
-    console.log('\n📅 Generating 12 weeks of effort data...');
+
+    // Generate data for all weeks from August 4, 2025 to November 30, 2025 (inclusive)
+    console.log('\n📅 Generating weekly effort data up to previous week (ending 2025-11-30)...');
     console.log('   Simulating: Work lag, per-day leaves (5-day week), bugs, scope changes');
     console.log();
 
-    let weekStartDate = new Date('2025-08-04'); // First Monday in August 2025
+    const firstMonday = new Date('2025-08-04');
+    const lastSunday = new Date('2025-11-30');
     const weeklyEffortsCreated = [];
     const weeklyMetricsCreated = [];
 
-    for (let weekNum = 0; weekNum < 12; weekNum++) {
+    let weekStartDate = new Date(firstMonday);
+    let weekNum = 0;
+    let lastGeneratedEnd = null;
+    while (weekStartDate <= lastSunday) {
       const { start, end } = getWeekDates(weekStartDate);
-      
+      if (end > lastSunday) break;
+
       console.log(`   Week ${weekNum + 1}: ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`);
 
       let totalWeekHours = 0;
-      
-      // Create effort entries for each resource
       for (let resIdx = 0; resIdx < resources.length; resIdx++) {
-        const hours = generateWeeklyHours(weekNum, resIdx);
+        const hours = generateWeeklyHours(weekNum % 12, resIdx);
         totalWeekHours += hours;
-        
-        if (hours > 0) {
-          const effort = await ProjectWeeklyEffort.create({
-            project: project._id,
-            resource: resources[resIdx]._id,
-            hours: hours,
-            week_start_date: start,
-            week_end_date: end,
-            last_modified_by: manager._id,
-          });
-          weeklyEffortsCreated.push(effort);
-          
-          console.log(`      - ${resourcesData[resIdx].name}: ${hours} hours`);
-        } else {
-          console.log(`      - ${resourcesData[resIdx].name}: ${hours} hours`);
-        }
+        const effort = await ProjectWeeklyEffort.create({
+          project: project._id,
+          resource: resources[resIdx]._id,
+          hours: hours,
+          week_start_date: start,
+          week_end_date: end,
+          last_modified_by: manager._id,
+        });
+        weeklyEffortsCreated.push(effort);
+        console.log(`      - ${resourcesData[resIdx].name}: ${hours} hours`);
       }
 
-      // Create weekly metrics
-      const scopeCompleted = calculateScopeCompleted(weekNum);
-      const comments = generateWeeklyComments(weekNum);
-      
+      const scopeCompleted = calculateScopeCompleted(weekNum % 12);
+      const comments = generateWeeklyComments(weekNum % 12);
       const metrics = await ProjectWeeklyMetrics.create({
         project: project._id,
         week_start_date: start,
@@ -427,13 +423,52 @@ Adjusted deliverables:
         last_modified_by: manager._id,
       });
       weeklyMetricsCreated.push(metrics);
-      
       console.log(`      Total: ${totalWeekHours} hours | Scope: ${scopeCompleted}%`);
       console.log(`      Note: ${comments.substring(0, 80)}...`);
       console.log();
 
-      // Move to next week
+      lastGeneratedEnd = end;
       weekStartDate.setDate(weekStartDate.getDate() + 7);
+      weekNum++;
+    }
+
+    // Ensure the week Nov 24 to Nov 30, 2025 is included if not already
+    const nov24 = new Date('2025-11-24T00:00:00.000Z');
+    const nov30 = new Date('2025-11-30T23:59:59.999Z');
+    if (!lastGeneratedEnd || lastGeneratedEnd < nov30) {
+      const start = nov24;
+      const end = nov30;
+      console.log(`   Week (Final): ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`);
+      let totalWeekHours = 0;
+      for (let resIdx = 0; resIdx < resources.length; resIdx++) {
+        const hours = generateWeeklyHours(weekNum % 12, resIdx);
+        totalWeekHours += hours;
+        const effort = await ProjectWeeklyEffort.create({
+          project: project._id,
+          resource: resources[resIdx]._id,
+          hours: hours,
+          week_start_date: start,
+          week_end_date: end,
+          last_modified_by: manager._id,
+        });
+        weeklyEffortsCreated.push(effort);
+        console.log(`      - ${resourcesData[resIdx].name}: ${hours} hours`);
+      }
+      const scopeCompleted = calculateScopeCompleted(weekNum % 12);
+      const comments = generateWeeklyComments(weekNum % 12);
+      const metrics = await ProjectWeeklyMetrics.create({
+        project: project._id,
+        week_start_date: start,
+        week_end_date: end,
+        rollup_hours: totalWeekHours,
+        scope_completed: scopeCompleted,
+        comments: comments,
+        last_modified_by: manager._id,
+      });
+      weeklyMetricsCreated.push(metrics);
+      console.log(`      Total: ${totalWeekHours} hours | Scope: ${scopeCompleted}%`);
+      console.log(`      Note: ${comments.substring(0, 80)}...`);
+      console.log();
     }
 
     // Calculate total actual hours

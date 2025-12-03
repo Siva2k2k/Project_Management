@@ -221,8 +221,13 @@ export function AuditLogViewDialog({ auditLog, open, onClose }: AuditLogViewDial
               </div>
             </div>
             <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Entity ID</span>
-              <p className="text-sm font-mono text-gray-900 dark:text-white mt-1 break-all">{auditLog.entity_id}</p>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Entity</span>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
+                {auditLog.entity_name || 'Deleted Entity'}
+              </p>
+              <p className="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1 break-all">
+                ID: {auditLog.entity_id}
+              </p>
             </div>
           </div>
 

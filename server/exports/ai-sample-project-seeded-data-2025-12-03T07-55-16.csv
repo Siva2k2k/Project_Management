@@ -1,0 +1,167 @@
+======================================================================
+AI SAMPLE PROJECT - COMPLETE SEEDED DATA EXPORT
+Generated: 2025-12-03T07:55:15.020Z
+======================================================================
+
+
+### USERS ###
+ID,Name,Email,Role,Is Active,Email Verified,Created At,Updated At
+692499ee7ca8c96998405d72,Admin User,admin@example.com,Admin,true,,2025-11-24T17:46:22.667Z,2025-12-03T07:09:40.471Z
+6925680cf89b5d740cf41c7f,Anandhan S,anandhan@hibizsolutions.com,Admin,true,false,2025-11-25T08:25:48.516Z,2025-12-03T07:40:17.980Z
+69256704f91a32fb09251b6e,Aravind  S,aravind@hibizsolutions.com,Manager,true,false,2025-11-25T08:21:24.336Z,2025-12-03T05:44:01.194Z
+692499ef7ca8c96998405d77,CEO User,ceo@example.com,CEO,true,,2025-11-24T17:46:23.464Z,2025-12-03T07:40:10.631Z
+692499f07ca8c96998405d79,John Manager,john@example.com,Manager,true,,2025-11-24T17:46:24.141Z,2025-11-28T12:09:07.560Z
+69254c8cc9b0e4022197436a,Jayant,jsranandhan@gmail.com,Manager,true,false,2025-11-25T06:28:28.169Z,2025-12-03T04:23:58.969Z
+692fc07f2ebb0ea4107515a8,Raj (KK Rajan),raj@hibizsolutions.com,CEO,true,true,2025-12-03T04:45:51.978Z,2025-12-03T04:46:59.169Z
+692499f07ca8c96998405d7b,Sarah Manager,sarah@example.com,Manager,true,,2025-11-24T17:46:24.732Z,2025-11-24T17:46:24.732Z
+69253c897c1cec172a764c2d,Sivakumar RV,sivakumar@hibizsolutions.com,CEO,true,false,2025-11-25T05:20:09.170Z,2025-11-28T12:21:29.318Z
+692fce292ebb0ea410751843,Sri Ram Kumar G,sriramkumar@hibizsolutions.com,Manager,true,true,2025-12-03T05:44:09.115Z,2025-12-03T07:28:18.632Z
+6926b18375a4f4085e59af9f,test user 1,test@gmail.com,Manager,true,true,2025-11-26T07:51:31.335Z,2025-11-26T07:51:31.335Z
+
+### CUSTOMERS ###
+ID,Customer Name,Email,Contact Info,Created By,Is Deleted,Last Modified Date,Created At,Updated At
+692fd36491d09cafaf6527bd,AI Innovation Labs,contact@aiinnovationlabs.com,"456 Innovation Drive, San Francisco, CA 94105 | +1-555-0199",Admin User,false,2025-12-03T06:06:28.074Z,2025-12-03T06:06:28.073Z,2025-12-03T06:06:28.073Z
+692499f17ca8c96998405d7d,Acme Corporation,contact@acme.com,"Phone: +1-555-0101, Address: 123 Business St, New York, NY",Admin User,false,2025-11-24T17:46:25.312Z,2025-11-24T17:46:25.312Z,2025-11-24T17:46:25.312Z
+692499f17ca8c96998405d81,Global Solutions Ltd,hello@globalsolutions.com,"Phone: +44-20-1234-5678, Address: 789 Corporate Blvd, London, UK",Admin User,false,2025-11-24T17:46:25.383Z,2025-11-24T17:46:25.383Z,2025-11-24T17:46:25.383Z
+692499f17ca8c96998405d7f,TechStart Inc,info@techstart.com,"Phone: +1-555-0202, Address: 456 Innovation Ave, San Francisco, CA",Admin User,false,2025-11-24T17:46:25.349Z,2025-11-24T17:46:25.349Z,2025-11-24T17:46:25.349Z
+
+### RESOURCES ###
+ID,Resource Name,Email,Status,Per Hour Rate,Currency,Last Modified By,Last Modified Date,Created At,Updated At
+692499f17ca8c96998405d83,Alice Johnson,alice.johnson@company.com,Active,85,USD,,2025-11-24T17:46:25.418Z,2025-11-24T17:46:25.418Z,2025-11-24T17:46:25.418Z
+692fd36491d09cafaf6527ca,Aravind S,aravind@hibizsolutions.com,Active,30,USD,Admin User,2025-12-03T06:06:28.505Z,2025-12-03T06:06:28.505Z,2025-12-03T06:06:28.505Z
+692499f17ca8c96998405d85,Bob Smith,bob.smith@company.com,Inactive,75,USD,Sivakumar RV,2025-11-28T05:02:57.785Z,2025-11-24T17:46:25.454Z,2025-11-28T05:02:57.814Z
+692499f17ca8c96998405d87,Charlie Brown,charlie.brown@company.com,Active,90,USD,,2025-11-24T17:46:25.493Z,2025-11-24T17:46:25.493Z,2025-11-24T17:46:25.493Z
+692499f17ca8c96998405d89,Diana Prince,diana.prince@company.com,Active,95,USD,,2025-11-24T17:46:25.529Z,2025-11-24T17:46:25.529Z,2025-11-24T17:46:25.529Z
+692499f17ca8c96998405d8b,Ethan Hunt,ethan.hunt@company.com,Active,80,USD,,2025-11-24T17:46:25.564Z,2025-11-24T17:46:25.564Z,2025-11-24T17:46:25.564Z
+692499f17ca8c96998405d8d,Fiona Green,fiona.green@company.com,Inactive,70,USD,Sivakumar RV,2025-11-28T05:02:06.240Z,2025-11-24T17:46:25.597Z,2025-11-28T05:02:06.279Z
+692fd36491d09cafaf6527c0,Siva Kumar RV,sivakumar@hibizsolutions.com,Active,30,USD,Admin User,2025-12-03T06:06:28.246Z,2025-12-03T06:06:28.246Z,2025-12-03T06:06:28.246Z
+692fd36491d09cafaf6527c3,Sriram Kumar G,sriramkumar@hibizsolutions.com,Active,30,USD,Admin User,2025-12-03T06:06:28.388Z,2025-12-03T06:06:28.387Z,2025-12-03T06:06:28.387Z
+6926b2c675a4f4085e59afcf,john watson,john@gmail.com,Active,65,USD,Admin User,2025-11-26T07:56:54.271Z,2025-11-26T07:56:54.271Z,2025-11-26T07:56:54.271Z
+
+### PROJECTS ###
+ID,Project Name,Start Date,End Date,Project Type,Estimated Effort,Estimated Budget,Estimated Resources,Scope Completed,Overall Status,Assigned Manager,Customer,Project Status,Hourly Rate,Hourly Rate Source,Estimation,Scope Estimation,Resources (Count),Tracking By,Scope Status,Quality Status,Budget Status,Is Deleted,Last Modified Date,Created At,Updated At
+692fd36491d09cafaf6527ce,AI Sample Project,2025-08-01T00:00:00.000Z,2026-01-31T00:00:00.000Z,TM,3120,93600,3,70,Amber,Anandhan S,AI Innovation Labs,Active,30,Project,"AI-powered analytics platform with machine learning capabilities.
+      
+Components:
+- User authentication and authorization module
+- AI model integration (3 different ML models)
+- Real-time data processing engine
+- Analytics dashboard with 15 visualization screens
+- RESTful API layer (25+ endpoints)
+- Admin panel (8 screens)
+- Reporting module with PDF/Excel export
+
+Resources: 3 full-stack developers
+Hourly Rate: $30/hour
+Technology Stack: React, Node.js, Python (ML models), PostgreSQL, Redis
+Expected Deliverables: 23 screens, 25+ API endpoints, 3 ML model integrations","Initial Scope (100%):
+- Core features: User management, basic analytics, 2 ML models
+- 18 screens initially planned
+- 20 API endpoints
+
+Scope Changes During Development:
+- Week 4-5: Bugs discovered in ML prediction module (+10% rework)
+- Week 8: Customer requested real-time dashboard and advanced reporting (+30% scope)
+- Final scope: ~130% of original estimate
+
+Adjusted deliverables:
+- 23 screens (increased from 18)
+- 25+ API endpoints (increased from 20)
+- 3 ML models (increased from 2)
+- Additional real-time features",3,EndDate,Amber,Green,Green,false,2025-12-03T06:15:22.331Z,2025-12-03T06:06:28.733Z,2025-12-03T06:15:22.333Z
+6927e6d75a625a57fd727378,Aravind's project,2025-11-27T00:00:00.000Z,2025-11-30T00:00:00.000Z,FP,100,10000,1,15,Green,Aravind  S,Global Solutions Ltd,Active,,Resource,,,0,EndDate,Green,Green,Green,false,2025-11-27T09:45:42.213Z,2025-11-27T05:51:19.421Z,2025-11-27T09:45:42.215Z
+692499f27ca8c96998405da0,Cloud Infrastructure Migration,2024-12-01T00:00:00.000Z,2025-08-31T00:00:00.000Z,FP,1200,150000,4,17,Green,John Manager,TechStart Inc,Active,,Resource,,,3,Milestone,Green,Green,Green,false,2025-11-28T12:08:41.261Z,2025-11-24T17:46:26.052Z,2025-11-28T12:08:41.264Z
+692499f27ca8c96998405d9e,Data Analytics Dashboard,2023-09-01T00:00:00.000Z,2024-03-31T00:00:00.000Z,TM,800,72000,3,15,Green,Sarah Manager,Acme Corporation,,,,,,0,EndDate,Green,Green,Green,false,2025-11-28T11:37:10.988Z,2025-11-24T17:46:26.011Z,2025-11-28T11:37:10.989Z
+692499f17ca8c96998405d8f,E-commerce Platform Development,2024-01-15T00:00:00.000Z,2025-06-30T00:00:00.000Z,FP,2000,180000,5,45,Green,John Manager,Acme Corporation,Active,,Resource,,,3,Milestone,Green,Green,Green,false,2025-11-27T05:34:18.978Z,2025-11-24T17:46:25.641Z,2025-11-27T05:34:18.978Z
+692499f17ca8c96998405d98,Enterprise CRM System,2024-02-01T00:00:00.000Z,2024-12-31T00:00:00.000Z,FP,1800,200000,6,0,Red,John Manager,Global Solutions Ltd,Active,,Resource,,,4,Milestone,Red,Amber,Red,false,2025-11-27T05:34:19.323Z,2025-11-24T17:46:25.971Z,2025-11-27T05:34:19.323Z
+69258453fb1c3fcf8207317d,John Projects - 1,2025-11-02T00:00:00.000Z,2025-12-26T00:00:00.000Z,FP,122,10000,4,0,Green,John Manager,TechStart Inc,Active,,Resource,,,3,EndDate,Green,Green,Green,false,2025-11-28T05:21:22.224Z,2025-11-25T10:26:27.991Z,2025-11-28T05:21:22.225Z
+6927dfb91d60ae23846b012d,John Projects - 2,2025-11-01T00:00:00.000Z,2026-01-02T00:00:00.000Z,FP,200,120000,1,-80.27,Green,Sivakumar RV,Global Solutions Ltd,Active,,Resource,,,3,EndDate,Green,Green,Green,false,2025-11-28T05:57:07.014Z,2025-11-27T05:20:57.870Z,2025-11-28T05:57:07.016Z
+692499f17ca8c96998405d96,Mobile Banking App,2024-03-01T00:00:00.000Z,2025-03-31T00:00:00.000Z,TM,1500,135000,4,38,Amber,Sarah Manager,TechStart Inc,Active,,Resource,,,2,EndDate,Amber,Green,Amber,false,2025-11-27T05:34:19.271Z,2025-11-24T17:46:25.680Z,2025-11-27T05:34:19.271Z
+69249d5a332bce7c0afd5113,Test Anand AI,2025-06-01T00:00:00.000Z,2026-03-31T00:00:00.000Z,FP,12000,100000,5,50,Green,Anandhan S,Acme Corporation,Active,,Resource,,,5,EndDate,Green,Green,Green,false,2025-11-27T05:34:19.437Z,2025-11-24T18:00:58.100Z,2025-11-27T05:34:19.436Z
+692824272f9faa16abff3107,Test Project for Hourly rate - Project level,2025-11-25T00:00:00.000Z,2026-01-25T00:00:00.000Z,TM,300,50000,2,10,Green,Sivakumar RV,Global Solutions Ltd,Active,100,Project,,,1,EndDate,Green,Green,Green,false,2025-11-27T10:12:55.229Z,2025-11-27T10:12:55.228Z,2025-11-27T10:12:55.228Z
+692536deb6c91007971676d9,Test Siva,2025-11-25T00:00:00.000Z,2026-01-25T00:00:00.000Z,FP,300,5000,5,56,Green,Anandhan S,TechStart Inc,Active,,Resource,,,4,EndDate,Amber,Green,Green,false,2025-11-27T05:45:41.310Z,2025-11-25T04:55:58.362Z,2025-11-27T05:45:41.310Z
+
+### PROJECT WEEKLY EFFORTS (AI Sample Project) ###
+ID,Project ID,Resource Name,Resource Email,Hours,Week Start Date,Week End Date,Last Modified By,Last Modified Date,Created At,Updated At
+692fd36491d09cafaf6527d0,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,28,2025-08-04T00:00:00.000Z,2025-08-10T23:59:59.999Z,Aravind  S,2025-12-03T06:06:28.844Z,2025-12-03T06:06:28.843Z,2025-12-03T06:06:28.843Z
+692fd36491d09cafaf6527d2,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,35,2025-08-04T00:00:00.000Z,2025-08-10T23:59:59.999Z,Aravind  S,2025-12-03T06:06:28.925Z,2025-12-03T06:06:28.925Z,2025-12-03T06:06:28.925Z
+692fd36491d09cafaf6527d4,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,30,2025-08-04T00:00:00.000Z,2025-08-10T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.001Z,2025-12-03T06:06:29.000Z,2025-12-03T06:06:29.000Z
+692fd36591d09cafaf6527d8,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,38,2025-08-11T00:00:00.000Z,2025-08-17T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.200Z,2025-12-03T06:06:29.200Z,2025-12-03T06:06:29.200Z
+692fd36591d09cafaf6527da,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,24,2025-08-11T00:00:00.000Z,2025-08-17T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.275Z,2025-12-03T06:06:29.275Z,2025-12-03T06:06:29.275Z
+692fd36591d09cafaf6527dc,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,32,2025-08-11T00:00:00.000Z,2025-08-17T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.350Z,2025-12-03T06:06:29.350Z,2025-12-03T06:06:29.350Z
+692fd36591d09cafaf6527e0,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,26,2025-08-18T00:00:00.000Z,2025-08-24T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.476Z,2025-12-03T06:06:29.476Z,2025-12-03T06:06:29.476Z
+692fd36591d09cafaf6527e2,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,38,2025-08-18T00:00:00.000Z,2025-08-24T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.551Z,2025-12-03T06:06:29.551Z,2025-12-03T06:06:29.551Z
+692fd36591d09cafaf6527e4,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,35,2025-08-18T00:00:00.000Z,2025-08-24T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.621Z,2025-12-03T06:06:29.621Z,2025-12-03T06:06:29.621Z
+692fd36591d09cafaf6527e8,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,35,2025-08-25T00:00:00.000Z,2025-08-31T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.750Z,2025-12-03T06:06:29.750Z,2025-12-03T06:06:29.750Z
+692fd36591d09cafaf6527ea,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,26,2025-08-25T00:00:00.000Z,2025-08-31T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.817Z,2025-12-03T06:06:29.817Z,2025-12-03T06:06:29.817Z
+692fd36591d09cafaf6527ec,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,40,2025-08-25T00:00:00.000Z,2025-08-31T23:59:59.999Z,Aravind  S,2025-12-03T06:06:29.883Z,2025-12-03T06:06:29.883Z,2025-12-03T06:06:29.883Z
+692fd36691d09cafaf6527f0,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,40,2025-09-01T00:00:00.000Z,2025-09-07T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.059Z,2025-12-03T06:06:30.058Z,2025-12-03T06:06:30.058Z
+692fd36691d09cafaf6527f2,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,40,2025-09-01T00:00:00.000Z,2025-09-07T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.148Z,2025-12-03T06:06:30.148Z,2025-12-03T06:06:30.148Z
+692fd36691d09cafaf6527f4,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,38,2025-09-01T00:00:00.000Z,2025-09-07T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.222Z,2025-12-03T06:06:30.222Z,2025-12-03T06:06:30.222Z
+692fd36691d09cafaf6527f8,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,38,2025-09-08T00:00:00.000Z,2025-09-14T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.372Z,2025-12-03T06:06:30.372Z,2025-12-03T06:06:30.372Z
+692fd36691d09cafaf6527fa,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,24,2025-09-08T00:00:00.000Z,2025-09-14T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.444Z,2025-12-03T06:06:30.443Z,2025-12-03T06:06:30.443Z
+692fd36691d09cafaf6527fc,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,40,2025-09-08T00:00:00.000Z,2025-09-14T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.508Z,2025-12-03T06:06:30.508Z,2025-12-03T06:06:30.508Z
+692fd36691d09cafaf652800,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,26,2025-09-15T00:00:00.000Z,2025-09-21T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.630Z,2025-12-03T06:06:30.630Z,2025-12-03T06:06:30.630Z
+692fd36691d09cafaf652802,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,36,2025-09-15T00:00:00.000Z,2025-09-21T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.700Z,2025-12-03T06:06:30.700Z,2025-12-03T06:06:30.700Z
+692fd36691d09cafaf652804,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,36,2025-09-15T00:00:00.000Z,2025-09-21T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.776Z,2025-12-03T06:06:30.775Z,2025-12-03T06:06:30.775Z
+692fd36691d09cafaf652808,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,35,2025-09-22T00:00:00.000Z,2025-09-28T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.912Z,2025-12-03T06:06:30.911Z,2025-12-03T06:06:30.911Z
+692fd36691d09cafaf65280a,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,35,2025-09-22T00:00:00.000Z,2025-09-28T23:59:59.999Z,Aravind  S,2025-12-03T06:06:30.971Z,2025-12-03T06:06:30.971Z,2025-12-03T06:06:30.971Z
+692fd36791d09cafaf65280c,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,38,2025-09-22T00:00:00.000Z,2025-09-28T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.045Z,2025-12-03T06:06:31.045Z,2025-12-03T06:06:31.045Z
+692fd36791d09cafaf652810,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,40,2025-09-29T00:00:00.000Z,2025-10-05T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.192Z,2025-12-03T06:06:31.191Z,2025-12-03T06:06:31.191Z
+692fd36791d09cafaf652812,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,40,2025-09-29T00:00:00.000Z,2025-10-05T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.285Z,2025-12-03T06:06:31.285Z,2025-12-03T06:06:31.285Z
+692fd36791d09cafaf652814,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,22,2025-09-29T00:00:00.000Z,2025-10-05T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.378Z,2025-12-03T06:06:31.377Z,2025-12-03T06:06:31.377Z
+692fd36791d09cafaf652818,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,38,2025-10-06T00:00:00.000Z,2025-10-12T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.533Z,2025-12-03T06:06:31.533Z,2025-12-03T06:06:31.533Z
+692fd36791d09cafaf65281a,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,40,2025-10-06T00:00:00.000Z,2025-10-12T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.602Z,2025-12-03T06:06:31.602Z,2025-12-03T06:06:31.602Z
+692fd36791d09cafaf65281c,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,38,2025-10-06T00:00:00.000Z,2025-10-12T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.671Z,2025-12-03T06:06:31.671Z,2025-12-03T06:06:31.671Z
+692fd36791d09cafaf652820,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,42,2025-10-13T00:00:00.000Z,2025-10-19T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.811Z,2025-12-03T06:06:31.811Z,2025-12-03T06:06:31.811Z
+692fd36791d09cafaf652822,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,40,2025-10-13T00:00:00.000Z,2025-10-19T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.911Z,2025-12-03T06:06:31.911Z,2025-12-03T06:06:31.911Z
+692fd36791d09cafaf652824,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,40,2025-10-13T00:00:00.000Z,2025-10-19T23:59:59.999Z,Aravind  S,2025-12-03T06:06:31.980Z,2025-12-03T06:06:31.980Z,2025-12-03T06:06:31.980Z
+692fd36891d09cafaf652828,692fd36491d09cafaf6527ce,Siva Kumar RV,sivakumar@hibizsolutions.com,34,2025-10-20T00:00:00.000Z,2025-10-26T23:59:59.999Z,Aravind  S,2025-12-03T06:06:32.124Z,2025-12-03T06:06:32.123Z,2025-12-03T06:06:32.123Z
+692fd36891d09cafaf65282a,692fd36491d09cafaf6527ce,Sriram Kumar G,sriramkumar@hibizsolutions.com,32,2025-10-20T00:00:00.000Z,2025-10-26T23:59:59.999Z,Aravind  S,2025-12-03T06:06:32.201Z,2025-12-03T06:06:32.200Z,2025-12-03T06:06:32.200Z
+692fd36891d09cafaf65282c,692fd36491d09cafaf6527ce,Aravind S,aravind@hibizsolutions.com,35,2025-10-20T00:00:00.000Z,2025-10-26T23:59:59.999Z,Aravind  S,2025-12-03T06:06:32.271Z,2025-12-03T06:06:32.271Z,2025-12-03T06:06:32.271Z
+
+### PROJECT WEEKLY METRICS (AI Sample Project) ###
+ID,Project ID,Week Start Date,Week End Date,Rollup Hours,Scope Completed,Comments,Last Modified By,Last Modified Date,Created At,Updated At
+692fd36591d09cafaf6527d6,692fd36491d09cafaf6527ce,2025-08-04T00:00:00.000Z,2025-08-10T23:59:59.999Z,93,-5,Project kickoff successful. Team onboarding in progress. Initial setup and architecture design completed.,Aravind  S,2025-12-03T06:06:29.075Z,2025-12-03T06:06:29.075Z,2025-12-03T06:06:29.075Z
+692fd36591d09cafaf6527de,692fd36491d09cafaf6527ce,2025-08-11T00:00:00.000Z,2025-08-17T23:59:59.999Z,94,10,Requirements analysis completed. Started development on core AI modules. Some integration challenges with existing systems.,Aravind  S,2025-12-03T06:06:29.409Z,2025-12-03T06:06:29.409Z,2025-12-03T06:06:29.409Z
+692fd36591d09cafaf6527e6,692fd36491d09cafaf6527ce,2025-08-18T00:00:00.000Z,2025-08-24T23:59:59.999Z,99,22,Development progressing. Siva on leave this week. Other team members covering critical tasks.,Aravind  S,2025-12-03T06:06:29.691Z,2025-12-03T06:06:29.691Z,2025-12-03T06:06:29.691Z
+692fd36591d09cafaf6527ee,692fd36491d09cafaf6527ce,2025-08-25T00:00:00.000Z,2025-08-31T23:59:59.999Z,101,35,Completed user authentication module. API integration started. Sriram taking half-week leave for personal matters.,Aravind  S,2025-12-03T06:06:29.969Z,2025-12-03T06:06:29.969Z,2025-12-03T06:06:29.969Z
+692fd36691d09cafaf6527f6,692fd36491d09cafaf6527ce,2025-09-01T00:00:00.000Z,2025-09-07T23:59:59.999Z,118,30,Good progress on AI model integration. All core features development on track. Team working well together.,Aravind  S,2025-12-03T06:06:30.300Z,2025-12-03T06:06:30.300Z,2025-12-03T06:06:30.300Z
+692fd36691d09cafaf6527fe,692fd36491d09cafaf6527ce,2025-09-08T00:00:00.000Z,2025-09-14T23:59:59.999Z,102,25,Sriram on full leave this week. Discovered several bugs in the AI prediction module requiring immediate attention.,Aravind  S,2025-12-03T06:06:30.569Z,2025-12-03T06:06:30.568Z,2025-12-03T06:06:30.568Z
+692fd36691d09cafaf652806,692fd36491d09cafaf6527ce,2025-09-15T00:00:00.000Z,2025-09-21T23:59:59.999Z,98,20,Bug fixing week. Multiple issues found during internal testing. Siva on half-week leave. Progress slower than expected.,Aravind  S,2025-12-03T06:06:30.850Z,2025-12-03T06:06:30.850Z,2025-12-03T06:06:30.850Z
+692fd36791d09cafaf65280e,692fd36491d09cafaf6527ce,2025-09-22T00:00:00.000Z,2025-09-28T23:59:59.999Z,108,18,Rework on AI algorithm due to accuracy issues. Customer requested changes to data processing logic. Some scope creep evident.,Aravind  S,2025-12-03T06:06:31.122Z,2025-12-03T06:06:31.122Z,2025-12-03T06:06:31.122Z
+692fd36791d09cafaf652816,692fd36491d09cafaf6527ce,2025-09-29T00:00:00.000Z,2025-10-05T23:59:59.999Z,102,15,Aravind on leave this week. New requirements from customer added: real-time analytics dashboard and additional reporting features.,Aravind  S,2025-12-03T06:06:31.459Z,2025-12-03T06:06:31.459Z,2025-12-03T06:06:31.459Z
+692fd36791d09cafaf65281e,692fd36491d09cafaf6527ce,2025-10-06T00:00:00.000Z,2025-10-12T23:59:59.999Z,116,25,Team adapting to expanded scope. Breaking down new requirements into tasks. Revised estimates for remaining work.,Aravind  S,2025-12-03T06:06:31.740Z,2025-12-03T06:06:31.740Z,2025-12-03T06:06:31.740Z
+692fd36891d09cafaf652826,692fd36491d09cafaf6527ce,2025-10-13T00:00:00.000Z,2025-10-19T23:59:59.999Z,122,40,Strong sprint week. Made significant progress on new features. All team members focused and productive.,Aravind  S,2025-12-03T06:06:32.051Z,2025-12-03T06:06:32.051Z,2025-12-03T06:06:32.051Z
+692fd36891d09cafaf65282e,692fd36491d09cafaf6527ce,2025-10-20T00:00:00.000Z,2025-10-26T23:59:59.999Z,101,55,Project review with stakeholders completed. Demo well received. 70% scope completed. Preparing for next phase.,Aravind  S,2025-12-03T06:06:32.329Z,2025-12-03T06:06:32.329Z,2025-12-03T06:06:32.329Z
+
+### SUMMARY STATISTICS ###
+
+Entity,Count
+Users,11
+Customers,4
+Resources,10
+Projects,12
+Weekly Efforts,36
+Weekly Metrics,12
+
+### AI SAMPLE PROJECT STATISTICS ###
+
+Metric,Value
+Project Name,AI Sample Project
+Start Date,2025-08-01T00:00:00.000Z
+End Date,2026-01-31T00:00:00.000Z
+Estimated Effort (hours),3120
+Estimated Budget ($),93600
+Hourly Rate ($),30
+Hourly Rate Source,Project
+Current Scope Completed (%),70
+Overall Status,Amber
+Planned Hours (12 weeks),1440
+Actual Hours Logged,1254
+Utilization Rate (%),87.1
+Variance (hours),-186
+
+======================================================================
+END OF EXPORT
+======================================================================

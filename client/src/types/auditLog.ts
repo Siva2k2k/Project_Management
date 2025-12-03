@@ -2,6 +2,7 @@ export interface AuditLog {
   _id: string;
   entity_type: string;
   entity_id: string;
+  entity_name?: string | null;
   action: 'CREATE' | 'UPDATE' | 'DELETE';
   previous_data?: Record<string, any>;
   new_data?: Record<string, any>;
