@@ -148,6 +148,37 @@ export class AuditLogRepository extends BaseRepository<IAuditLog> {
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  async findAllWithPagination(
+    pagination: PaginationQuery = {}
+  ): Promise<PaginatedResult<IAuditLog>> {
+    const { page = 1, limit = 10 } = pagination;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.model
+        .find()
+        .populate('performed_by', 'name email')
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit),
+      this.model.countDocuments(),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findByIdWithPopulate(id: string | Types.ObjectId): Promise<IAuditLog | null> {
+    return this.model
+      .findById(id)
+      .populate('performed_by', 'name email');
+  }
 }
 
 export const auditLogRepository = new AuditLogRepository();

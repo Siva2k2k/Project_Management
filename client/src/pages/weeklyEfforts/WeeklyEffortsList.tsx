@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Eye, Edit2, Plus, Calendar, DollarSign, Clock, Target, Activity, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
 import {
   Select,
   SelectContent,
@@ -25,6 +26,8 @@ export function WeeklyEffortsList() {
   const [loading, setLoading] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [resourceCounts, setResourceCounts] = useState<{ [key: string]: number }>({});
+  const [page, setPage] = useState(1);
+  const limit = 10;
   
   // Dialog states
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
@@ -52,6 +55,7 @@ export function WeeklyEffortsList() {
   useEffect(() => {
     if (selectedProjectId) {
       fetchProjectMetrics(selectedProjectId);
+      setPage(1); // Reset to first page when project changes
     } else {
       setMetrics([]);
     }
@@ -100,10 +104,11 @@ export function WeeklyEffortsList() {
   );
 
   // Group metrics
-  const { currentWeekMetric, previousWeekMetric, pastMetrics } = useMemo<{
+  const { currentWeekMetric, previousWeekMetric, totalPastMetrics, paginatedPastMetrics } = useMemo<{
     currentWeekMetric: WeeklyMetrics | null;
     previousWeekMetric: WeeklyMetrics | null;
-    pastMetrics: WeeklyMetrics[];
+    totalPastMetrics: number;
+    paginatedPastMetrics: WeeklyMetrics[];
   }>(() => {
     let current: WeeklyMetrics | null = null;
     let previous: WeeklyMetrics | null = null;
@@ -125,8 +130,18 @@ export function WeeklyEffortsList() {
       }
     });
 
-    return { currentWeekMetric: current, previousWeekMetric: previous, pastMetrics: past };
-  }, [metrics, currentWeek, previousWeek]);
+    // Paginate past metrics
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginated = past.slice(startIndex, endIndex);
+
+    return { 
+      currentWeekMetric: current, 
+      previousWeekMetric: previous, 
+      totalPastMetrics: past.length,
+      paginatedPastMetrics: paginated
+    };
+  }, [metrics, currentWeek, previousWeek, page, limit]);
 
   // Calculate Summary Cards
   const summary = useMemo(() => {
@@ -403,7 +418,7 @@ export function WeeklyEffortsList() {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Week</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">End Date</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Scope %</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comment</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Highlights</th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -512,7 +527,7 @@ export function WeeklyEffortsList() {
                       )}
 
                       {/* Past Weeks Rows */}
-                      {pastMetrics.map((metric) => (
+                      {paginatedPastMetrics.map((metric) => (
                         <tr key={metric._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -554,6 +569,17 @@ export function WeeklyEffortsList() {
               </table>
             </div>
           </div>
+
+          {/* Pagination */}
+          {totalPastMetrics > limit && (
+            <Pagination
+              currentPage={page}
+              totalPages={Math.ceil(totalPastMetrics / limit)}
+              totalItems={totalPastMetrics}
+              itemsPerPage={limit}
+              onPageChange={setPage}
+            />
+          )}
         </>
       ) : (
         <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">

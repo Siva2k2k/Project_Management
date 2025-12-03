@@ -5,4 +5,5 @@ export { default as customerService } from './customerService';
 export { default as resourceService } from './resourceService';
 export { default as projectService } from './projectService';
 export { default as weeklyEffortService } from './weeklyEffortService';
+export { auditLogService } from './auditLogService';
 export type { User } from '../types/auth';

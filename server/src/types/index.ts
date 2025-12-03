@@ -131,6 +131,8 @@ export interface IProject extends Document {
   project_status: ProjectStatus;
   hourly_rate?: number;
   hourly_rate_source: HourlyRateSource;
+  estimation?: string;
+  scope_estimation?: string;
   // Resources assigned to the project
   resources?: Types.ObjectId[];
   is_deleted: boolean;

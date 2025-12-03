@@ -125,6 +125,14 @@ const projectSchema = new Schema<IProject>(
       enum: Object.values(HourlyRateSource),
       default: HourlyRateSource.RESOURCE,
     },
+    estimation: {
+      type: String,
+      trim: true,
+    },
+    scope_estimation: {
+      type: String,
+      trim: true,
+    },
     is_deleted: {
       type: Boolean,
       default: false,

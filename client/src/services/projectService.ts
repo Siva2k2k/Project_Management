@@ -69,6 +69,8 @@ export interface Project {
   project_status: ProjectStatus;
   hourly_rate?: number;
   hourly_rate_source: HourlyRateSource;
+  estimation?: string;
+  scope_estimation?: string;
   is_deleted: boolean;
   last_modified_date: string;
   last_modified_by?: string;
@@ -97,6 +99,8 @@ export interface CreateProjectInput {
   project_status?: ProjectStatus;
   hourly_rate?: number;
   hourly_rate_source?: HourlyRateSource;
+  estimation?: string;
+  scope_estimation?: string;
 }
 
 export interface PaginatedResponse<T> {

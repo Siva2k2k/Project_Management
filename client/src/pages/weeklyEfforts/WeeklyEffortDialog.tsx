@@ -832,13 +832,13 @@ export function WeeklyEffortDialog({ open, onClose, onSuccess, prefilledProject,
 
             {/* Comments */}
             <div className="mt-4">
-              <Label htmlFor="comments">Comments</Label>
+              <Label htmlFor="comments">Highlights</Label>
               <textarea
                 id="comments"
                 rows={3}
                 {...register('comments')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="Add any comments about this week's progress..."
+                placeholder="Add any highlights about this week's progress..."
               />
             </div>
           </div>

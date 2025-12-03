@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, ThemeProvider, useAuth } from './context';
 import { ProtectedRoute } from './components';
 import { DashboardLayout } from './components/layout';
-import { Login, Register, AuthCallback, ForgotPassword, ResetPassword, Profile } from './pages';
+import { Login, Register, AuthCallback, ForgotPassword, ResetPassword, Profile, AuditLogsList } from './pages';
 import { ManagerDashboard, CEODashboard, KPIDashboard, TrendsDashboard } from './pages/dashboard';
 import { CustomersList } from './pages/customers/CustomersList';
 import { ResourcesList } from './pages/resources/ResourcesList';
@@ -132,6 +132,16 @@ function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <ManageUsers />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/audit-logs"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <AuditLogsList />
                 </DashboardLayout>
               </ProtectedRoute>
             }

@@ -12,7 +12,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  UserCog
+  UserCog,
+  FileText
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context';
@@ -67,6 +68,12 @@ const menuItems: MenuItem[] = [
     path: '/manage-users',
     icon: <UserCog className="w-5 h-5" />,
     roles: ['Admin'],
+  },
+  {
+    name: 'Audit Logs',
+    path: '/audit-logs',
+    icon: <FileText className="w-5 h-5" />,
+    roles: ['Admin', 'CEO'],
   },
 ];
 

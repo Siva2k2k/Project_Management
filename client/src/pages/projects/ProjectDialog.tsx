@@ -83,6 +83,8 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
             project_status: project.project_status,
             hourly_rate: project.hourly_rate,
             hourly_rate_source: project.hourly_rate_source,
+            estimation: project.estimation,
+            scope_estimation: project.scope_estimation,
           });
         } else {
           setSelectedResources([]);
@@ -454,6 +456,30 @@ export function ProjectDialog({ open, onClose, onSuccess, project }: ProjectDial
                 {errors.estimated_resources && (
                   <p className="text-red-500 text-sm mt-1">{errors.estimated_resources.message}</p>
                 )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="estimation">Estimation</Label>
+                <textarea
+                  id="estimation"
+                  {...register('estimation')}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Project Estimation - Include details such as: No. of components, resources needed, hourly rate, screens, modules, etc."
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="scope_estimation">Scope Estimation</Label>
+                <textarea
+                  id="scope_estimation"
+                  {...register('scope_estimation')}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Scope estimation details"
+                />
               </div>
             </div>
           </div>
