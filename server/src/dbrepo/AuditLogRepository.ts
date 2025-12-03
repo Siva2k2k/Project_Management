@@ -456,8 +456,46 @@ export class AuditLogRepository extends BaseRepository<IAuditLog> {
         }
 
         // Resolve references in previous_data and new_data
-        const enrichedPreviousData = logObj.previous_data ? await resolveObjectReferences(logObj.previous_data) : logObj.previous_data;
-        const enrichedNewData = logObj.new_data ? await resolveObjectReferences(logObj.new_data) : logObj.new_data;
+        let enrichedPreviousData = logObj.previous_data ? await resolveObjectReferences(logObj.previous_data) : logObj.previous_data;
+        let enrichedNewData = logObj.new_data ? await resolveObjectReferences(logObj.new_data) : logObj.new_data;
+
+        // Filter out fields where the change is between null/empty values
+        if (enrichedPreviousData && enrichedNewData) {
+          const filteredPreviousData: any = {};
+          const filteredNewData: any = {};
+
+          for (const key in enrichedPreviousData) {
+            const prevValue = enrichedPreviousData[key];
+            const newValue = enrichedNewData[key];
+
+            // Check if both values are "empty" (null, undefined, empty string, or empty array)
+            const isPrevEmpty = prevValue === null || prevValue === undefined || prevValue === '' || (Array.isArray(prevValue) && prevValue.length === 0);
+            const isNewEmpty = newValue === null || newValue === undefined || newValue === '' || (Array.isArray(newValue) && newValue.length === 0);
+
+            // Only include the field if it's not a null/empty to null/empty change
+            if (!(isPrevEmpty && isNewEmpty)) {
+              filteredPreviousData[key] = prevValue;
+              filteredNewData[key] = newValue;
+            }
+          }
+
+          // Also check for keys that only exist in newData
+          for (const key in enrichedNewData) {
+            if (!(key in enrichedPreviousData)) {
+              const newValue = enrichedNewData[key];
+              const isNewEmpty = newValue === null || newValue === undefined || newValue === '' || (Array.isArray(newValue) && newValue.length === 0);
+              
+              // Only include if the new value is not empty
+              if (!isNewEmpty) {
+                filteredPreviousData[key] = undefined;
+                filteredNewData[key] = newValue;
+              }
+            }
+          }
+
+          enrichedPreviousData = filteredPreviousData;
+          enrichedNewData = filteredNewData;
+        }
 
         return {
           ...logObj,
