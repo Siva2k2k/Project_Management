@@ -55,7 +55,8 @@ export interface ProjectDrillDownData {
   project: ProjectSummary;
   effortByResource: Array<{ week: string; [resourceName: string]: number | string }>;
   budgetTrend: Array<{ week: string; estimated: number; actual: number }>;
-  scopeTrend: Array<{ week: string; scope_completed: number }>;
+  scopeTrend: Array<{ week: string; scope_completed: number; comments?: string }>;
+  scopeChangeTrend: Array<{ week: string; scope_change: number; current_scope: number; previous_scope: number; comments?: string }>;
   milestones: Array<{
     description: string;
     estimated_date: string;

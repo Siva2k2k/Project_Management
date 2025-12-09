@@ -248,7 +248,40 @@ export function TrendsDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9ca3af" />
               <YAxis domain={[0, 100]} stroke="#9ca3af" />
-              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', maxWidth: '300px' }} 
+                labelStyle={{ color: '#f3f4f6', marginBottom: '8px' }} 
+                itemStyle={{ color: '#f3f4f6' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const truncateText = (text: string, maxLength: number) => {
+                      if (!text) return '';
+                      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+                    };
+                    return (
+                      <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', padding: '10px', borderRadius: '4px', maxWidth: '300px' }}>
+                        <p style={{ color: '#f3f4f6', marginBottom: '8px', fontWeight: 'bold' }}>{label}</p>
+                        {!selectedProject && data.project && (
+                          <p style={{ color: '#a78bfa', fontSize: '0.875rem', marginBottom: '4px' }}>
+                            Project: {data.project}
+                          </p>
+                        )}
+                        <p style={{ color: '#f3f4f6', marginBottom: '4px' }}>
+                          Scope Completed: {payload[0].value}%
+                        </p>
+                        {data.comments && (
+                          <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '8px', lineHeight: '1.4', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <strong>Highlights:</strong><br />
+                            {truncateText(data.comments, 200)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
               <Legend wrapperStyle={{ color: '#9ca3af' }} />
               <Line
                 type="monotone"

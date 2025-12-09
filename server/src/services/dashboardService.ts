@@ -470,7 +470,23 @@ export async function getProjectDrillDown(projectId: string) {
   const scopeTrend = weeklyMetrics.data.map((m) => ({
     week: toISODateString(m.week_start_date),
     scope_completed: m.scope_completed || 0,
+    comments: m.comments || '',
   }));
+
+  // Calculate week-over-week scope change
+  const scopeChangeTrend = weeklyMetrics.data.map((m, index) => {
+    const currentScope = m.scope_completed || 0;
+    const previousScope = index > 0 ? (weeklyMetrics.data[index - 1].scope_completed || 0) : 0;
+    const scopeChange = currentScope - previousScope;
+    
+    return {
+      week: toISODateString(m.week_start_date),
+      scope_change: scopeChange,
+      current_scope: currentScope,
+      previous_scope: previousScope,
+      comments: m.comments || '',
+    };
+  });
 
   // Format milestones and calculate stats
   const milestones = formatMilestones(project.milestones);
@@ -495,6 +511,7 @@ export async function getProjectDrillDown(projectId: string) {
     effortByResource,
     budgetTrend,
     scopeTrend,
+    scopeChangeTrend,
     milestones,
     ...stats,
   };
@@ -779,11 +796,19 @@ export async function getTrends(projectId?: string, userId?: string, timeRange: 
   });
 
   // Scope completion trend - fetch from weekly metrics
-  const allMetrics = await projectWeeklyMetricsRepository.findWithPagination({}, { page: 1, limit: 1000, sort: 'week_start_date', order: 'asc' });
-  const scopeTrend = allMetrics.data.map((m) => ({
+  const metricsPromises = projectIds.map((id) => 
+    projectWeeklyMetricsRepository.findByProject(id, { page: 1, limit: 1000, sort: 'week_start_date', order: 'asc' })
+  );
+  const allMetricsResults = await Promise.all(metricsPromises);
+  const allMetrics = allMetricsResults.flatMap(result => result.data)
+    .filter((m) => new Date(m.week_start_date) >= startDate)
+    .sort((a, b) => new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime());
+  
+  const scopeTrend = allMetrics.map((m) => ({
     date: toISODateString(m.week_start_date),
     scope_completed: m.scope_completed || 0,
     project: isPopulatedProject(m.project) ? m.project.project_name : 'Unknown',
+    comments: m.comments || '',
   }));
 
   return {

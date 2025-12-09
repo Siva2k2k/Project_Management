@@ -12,12 +12,16 @@ import {
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import projectService from '../../services/projectService';
 import type { Project } from '../../services/projectService';
@@ -378,6 +382,124 @@ export function ProjectDetails() {
       </div>
 
       {/* Charts */}
+      {/* Scope Progress Over Time (Full Width) */}
+      {drillDownData.scopeTrend && drillDownData.scopeTrend.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Scope Progress Over Time
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={drillDownData.scopeTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis domain={[0, 100]} stroke="#9ca3af" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', maxWidth: '300px' }} 
+                labelStyle={{ color: '#f3f4f6', marginBottom: '8px' }} 
+                itemStyle={{ color: '#f3f4f6' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const truncateText = (text: string, maxLength: number) => {
+                      if (!text) return '';
+                      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+                    };
+                    return (
+                      <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', padding: '10px', borderRadius: '4px', maxWidth: '300px' }}>
+                        <p style={{ color: '#f3f4f6', marginBottom: '8px', fontWeight: 'bold' }}>{label}</p>
+                        <p style={{ color: '#f3f4f6', marginBottom: '4px' }}>
+                          Scope Completed: {payload[0].value}%
+                        </p>
+                        {data.comments && (
+                          <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '8px', lineHeight: '1.4', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <strong>Highlights:</strong><br />
+                            {truncateText(data.comments, 200)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
+              <Line
+                type="monotone"
+                dataKey="scope_completed"
+                stroke="#48c381ff"
+                strokeWidth={2}
+                name="Scope Completed (%)"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Week-over-Week Scope Change (Full Width) */}
+      {drillDownData.scopeChangeTrend && drillDownData.scopeChangeTrend.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Week-over-Week Scope Change
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={drillDownData.scopeChangeTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <ReferenceLine y={0} stroke="#6b7280" strokeWidth={2} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', maxWidth: '300px' }} 
+                labelStyle={{ color: '#f3f4f6', marginBottom: '8px' }} 
+                itemStyle={{ color: '#f3f4f6' }}
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const truncateText = (text: string, maxLength: number) => {
+                      if (!text) return '';
+                      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+                    };
+                    return (
+                      <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', padding: '10px', borderRadius: '4px', maxWidth: '300px' }}>
+                        <p style={{ color: '#f3f4f6', marginBottom: '8px', fontWeight: 'bold' }}>{label}</p>
+                        <p style={{ color: '#f3f4f6', marginBottom: '4px' }}>
+                          Current Week: {data.current_scope}%
+                        </p>
+                        <p style={{ color: '#f3f4f6', marginBottom: '4px' }}>
+                          Previous Week: {data.previous_scope}%
+                        </p>
+                        <p style={{ color: data.scope_change >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold', marginBottom: '4px' }}>
+                          Change: {data.scope_change > 0 ? '+' : ''}{data.scope_change}%
+                        </p>
+                        {data.comments && (
+                          <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '8px', lineHeight: '1.4', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <strong>Highlights:</strong><br />
+                            {truncateText(data.comments, 200)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend wrapperStyle={{ color: '#9ca3af' }} />
+              <Bar
+                dataKey="scope_change"
+                name="Scope Change (%)"
+                radius={[4, 4, 0, 0]}
+              >
+                {drillDownData.scopeChangeTrend.map((entry: any, index: number) => (
+                  <Cell 
+                    key={`cell-${index}`}
+                    fill={entry.scope_change >= 0 ? '#10b981' : '#ef4444'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Effort Trend (Full Width) - Weekly hours sum */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -461,20 +583,31 @@ export function ProjectDetails() {
             Cumulative Effort Trend
           </h2>
           <ResponsiveContainer width="100%" height={300}>
-            {
-              // Compute cumulative totals from effortByResource
-            }
             <LineChart
               data={(() => {
                 const byWeek = drillDownData.effortByResource || [];
                 const result: { week: string; total: number }[] = [];
                 let running = 0;
-                for (const row of byWeek) {
-                  const weekLabel = row.week;
-                  const sum = Object.keys(row)
+                
+                // First, convert cumulative data to weekly data, then create new cumulative
+                for (let i = 0; i < byWeek.length; i++) {
+                  const currentRow = byWeek[i];
+                  const previousRow = i > 0 ? byWeek[i - 1] : null;
+                  const weekLabel = currentRow.week;
+                  
+                  // Calculate weekly hours by subtracting previous cumulative from current cumulative
+                  let weeklyTotal = 0;
+                  Object.keys(currentRow)
                     .filter((k) => k !== 'week')
-                    .reduce((s, k) => s + (Number(row[k]) || 0), 0);
-                  running += sum;
+                    .forEach(resourceName => {
+                      const currentHours = Number(currentRow[resourceName]) || 0;
+                      const previousHours = previousRow ? (Number(previousRow[resourceName]) || 0) : 0;
+                      const weeklyHours = currentHours - previousHours;
+                      weeklyTotal += weeklyHours;
+                    });
+                  
+                  // Add weekly hours to running total
+                  running += weeklyTotal;
                   result.push({ week: weekLabel, total: running });
                 }
                 return result;
@@ -552,30 +685,6 @@ export function ProjectDetails() {
           </ResponsiveContainer>
         </div>
 
-        {/* Scope Trend */}
-        {drillDownData.scopeTrend && drillDownData.scopeTrend.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Scope Progress Over Time
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={drillDownData.scopeTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="week" stroke="#9ca3af" />
-                <YAxis domain={[0, 100]} stroke="#9ca3af" />
-                <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#f3f4f6' }} />
-                <Legend wrapperStyle={{ color: '#9ca3af' }} />
-                <Line
-                  type="monotone"
-                  dataKey="scope_completed"
-                  stroke="#8b5cf6"
-                  strokeWidth={2}
-                  name="Scope Completed (%)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
       </div>
 
       {/* Milestones */}
